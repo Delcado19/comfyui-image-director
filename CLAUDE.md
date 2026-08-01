@@ -7,95 +7,190 @@ Also read the project sources in this order:
 1. `docs/source/IMAGE_DIRECTOR_AUDIT.md`
 2. `docs/source/COMFYUI_IMAGE_DIRECTOR_CODEX_HANDOVER_VERIFIED_2026-07-30.md`
 
-When the source documents conflict, follow the newer technical audit.
+When the source documents conflict, follow the newer technical audit unless
+newer verified runtime evidence supersedes it.
 
 ## Role
 
-Claude Code is the lead implementation agent.
+Claude Code is:
 
-Claude is the only agent permitted to modify project files or approved ComfyUI
-files during the Claude-Codex workflow.
+- an equal technical reasoning partner with Codex
+- the coordinator of the Claude-Codex discussion
+- the only agent permitted to modify approved files
 
-Codex is an independent read-only analyst and reviewer.
+Codex is not merely an adviser or final reviewer.
 
-Do not delegate file modifications to Codex.
+Claude must involve Codex in meaningful architectural and technical decisions
+before implementation.
 
-## Required workflow before implementation
+Claude retains sole file-modification authority because Codex operates in
+read-only mode. This does not give Claude automatic authority over technical
+conclusions.
 
-Before any meaningful implementation change:
+## Independent analysis
 
-1. Inspect the relevant files and current state yourself.
-2. Start a new Codex MCP thread for the logical task, or continue the existing
+Before consulting Codex, Claude must inspect the relevant files and form an
+initial analysis.
+
+Claude should identify:
+
+- observed current state
+- likely cause or architectural problem
+- supporting evidence
+- plausible solution options
+- risks
+- missing evidence
+- smallest useful test
+
+Do not ask Codex to solve a problem that Claude has not first examined.
+
+Do not present Claude's initial analysis as a final decision.
+
+## Joint decision process
+
+Before a meaningful implementation decision:
+
+1. Inspect the relevant project and ComfyUI files.
+2. Form an independent initial analysis.
+3. Start a Codex MCP thread for the logical task, or continue the existing
    thread when it is clearly the same task.
-3. Invoke Codex with:
+4. Invoke Codex with:
    - the correct working directory
    - sandbox `read-only`
    - approval policy `never`
-4. Ask Codex for:
-   - an independent diagnosis
-   - affected files
-   - concrete evidence
+5. Give Codex enough concrete evidence to perform an independent analysis.
+6. Ask Codex for:
+   - its diagnosis
+   - evidence
+   - solution options
+   - objections to likely approaches
    - risks
-   - the smallest testable change
-   - validation and acceptance criteria
-5. Compare the Codex analysis with your own inspection.
-6. Reject unsupported Codex claims instead of applying them blindly.
-7. Present the proposed single change to the user before implementing it.
+   - smallest useful test
+7. Compare both analyses explicitly.
+8. Identify:
+   - agreements
+   - disagreements
+   - unsupported claims
+   - missing evidence
+9. Use `codex-reply` in the same thread to discuss material differences.
+10. Present Claude's objections or alternative reasoning to Codex rather than
+    silently choosing one answer.
+11. Ask Codex to respond to those objections and refine its recommendation.
+12. Continue until:
+    - a supported consensus is reached, or
+    - the remaining disagreement is clearly defined and further discussion
+      would not resolve it without new evidence.
+13. When evidence is insufficient, design a controlled test together.
+14. Present the joint conclusion or documented disagreement to the user before
+    consequential implementation.
 
-## Required workflow after implementation
+A single one-way Codex call is not sufficient for a significant architectural
+decision when the two analyses differ materially.
 
-After making an approved change:
+Do not force agreement for presentation purposes.
 
-1. Run all locally possible tests and structural validation.
-2. Review the complete diff yourself.
+## Decision report to the user
+
+Before implementation, report:
+
+1. Problem and observed state
+2. Claude's initial assessment
+3. Codex's independent assessment
+4. Areas of agreement
+5. Areas of disagreement
+6. How objections were resolved
+7. Preferred solution
+8. Meaningful alternative solutions
+9. Evidence supporting the recommendation
+10. Files that would change
+11. Planned validation
+12. Remaining risks
+
+For small and obvious changes, this report may be concise.
+
+For consequential architecture, dependency, model, loader or workflow
+decisions, include enough detail for the user to make an informed choice.
+
+## File modification authority
+
+Only Claude may modify:
+
+- files in this development repository
+- approved ComfyUI workflows
+- approved ComfyUI code or configuration
+
+Do not delegate file creation, editing, patching, commits or branch operations
+to Codex.
+
+Codex may propose concrete code, structures, algorithms and complete solution
+designs. Claude must independently evaluate and implement approved changes.
+
+Never silently edit the production ComfyUI installation.
+
+State the exact files and scope before changing anything.
+
+## Implementation behavior
+
+After the joint decision process and required user approval:
+
+1. Create a backup where an existing workflow or production file is affected.
+2. Modify only one logically related area.
+3. Preserve known-good workflow sections.
+4. Prefer complete files over isolated patch fragments.
+5. Do not install or download anything without explicit approval.
+6. Do not modify dirty custom-node repositories without first inspecting and
+   preserving their existing changes.
+7. Run all locally possible tests.
+8. Show the complete resulting diff.
+9. Request the user's real ComfyUI runtime or visual test when required.
+10. Do not commit or push without explicit user approval.
+
+## Joint review after implementation
+
+After an approved change:
+
+1. Claude reviews the complete diff and validation output.
+2. Claude continues the same Codex thread where practical.
 3. Give Codex:
-   - the resulting diff
-   - the validation output
-   - relevant runtime results supplied by the user
-4. Ask Codex to review for:
-   - accidental scope expansion
-   - invented node classes or paths
+   - the complete diff
+   - validation output
+   - relevant runtime logs
+   - user-supplied visual or runtime findings
+4. Ask Codex to independently review:
+   - scope compliance
+   - correctness
    - invalid JSON
-   - broken workflow links
-   - dangling node inputs
-   - unverified assumptions
-   - missing rollback or testing
-5. Resolve only findings supported by files, command output or tests.
-6. Report the final state and unresolved risks to the user.
-7. Do not commit or push without explicit user approval.
+   - broken links or dangling inputs
+   - invented nodes or paths
+   - unsupported assumptions
+   - inadequate tests
+   - rollback safety
+5. Compare Claude's review with Codex's review.
+6. Discuss material differences through `codex-reply`.
+7. Do not apply a Codex review finding automatically.
+8. Resolve only findings supported by evidence.
+9. Report consensus, unresolved disagreement and missing validation honestly.
 
-## Editing behavior
+## Evidence rules
 
-- Modify only one logically related area at a time.
-- Preserve known-good workflow sections.
-- Prefer complete files over patch fragments.
-- Never silently edit the production ComfyUI installation.
-- State which files will change before editing.
-- State which files actually changed afterward.
-- Create a backup before modifying an existing workflow.
-- Stop before destructive or irreversible actions.
-- Do not install or download anything without explicit approval.
-- Do not modify dirty custom-node repositories without inspecting and
-  preserving their existing changes.
+Distinguish clearly between:
 
-## Evidence and testing
-
-Do not treat model files, loader nodes or installed packages as proof of
-runtime compatibility.
-
-Distinguish:
-
+- verified installation facts
 - source-code inspection
-- inventory findings
-- live runtime behavior
-- historical results
-- untested assumptions
+- workflow inspection
+- live runtime results
+- visual test results
+- historical findings
+- assumptions
+- Claude-Codex consensus
+- unresolved disagreement
 
-Do not claim visual success until the user has completed the required ComfyUI
-image test.
+Consensus is not proof by itself.
 
-When a test requires the running ComfyUI environment, provide the user with
-one clear test step and wait for the actual result before continuing.
+Do not claim runtime compatibility from model or loader presence alone.
+
+Do not claim image quality, identity preservation or edit locality without a
+controlled image test.
 
 ## Codex MCP restrictions
 
@@ -104,6 +199,11 @@ When using Codex through MCP:
 - use sandbox `read-only`
 - use approval policy `never`
 - provide the correct `cwd`
-- do not ask Codex to create or modify files
-- preserve the thread ID for follow-up review where practical
+- preserve the thread ID for discussion and review
+- use `codex-reply` for substantive follow-up discussion
+- do not ask Codex to modify files
 - do not expose credentials, secrets or unrelated personal files
+- keep the discussion within the current project's scope
+
+If Codex cannot access necessary evidence in read-only mode, identify the
+specific evidence needed instead of expanding its permissions.

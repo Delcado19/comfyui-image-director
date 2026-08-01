@@ -9,8 +9,8 @@ Read the project sources in this order:
 
 When the documents conflict, the newer technical audit has priority.
 
-Do not silently combine contradictory claims. Record the conflict and use the
-newer verified finding.
+Do not silently combine contradictory claims. Identify the conflict and use the
+newer verified finding unless newer runtime evidence supersedes it.
 
 ## Project goal
 
@@ -33,6 +33,81 @@ Separate development repository:
 The ComfyUI installation is a customized working environment.
 
 Do not reorganize its existing folder structure.
+
+## Collaboration model
+
+Claude and Codex are equal technical reasoning partners.
+
+Both agents must:
+
+- inspect the available evidence independently
+- develop their own diagnosis and solution proposal
+- identify assumptions, risks and missing evidence
+- compare competing approaches
+- challenge unsupported conclusions
+- refine the solution through discussion
+- distinguish consensus from unresolved disagreement
+
+Neither agent should be treated as an unquestioned authority.
+
+Claude coordinates the interaction because the user communicates through
+Claude Code, but Claude must not reduce Codex to a one-way advisor or a final
+rubber-stamp reviewer.
+
+Codex must be given enough context to reason independently.
+
+Claude should use follow-up calls in the same Codex MCP thread to discuss:
+
+- differences between both analyses
+- objections to proposed solutions
+- alternative implementations
+- evidence supporting each option
+- testability and rollback
+- unresolved technical uncertainty
+
+The goal is a reasoned joint conclusion, not automatic agreement.
+
+## Decision process
+
+Before a meaningful implementation decision:
+
+1. Claude inspects the relevant files and forms an initial analysis.
+2. Codex independently inspects the same problem in read-only mode.
+3. Claude compares both analyses.
+4. Claude sends material differences, objections or open questions back to
+   Codex using the same MCP thread.
+5. Claude and Codex refine the options until:
+   - they reach a supported consensus, or
+   - the remaining disagreement is clearly documented.
+6. Claude presents the resulting recommendation to the user, including:
+   - the preferred solution
+   - meaningful alternatives
+   - supporting evidence
+   - remaining disagreement
+   - risks and required tests
+7. The user approves consequential implementation changes.
+8. Claude performs approved file modifications.
+
+A disagreement must not be hidden merely to present a single answer.
+
+When evidence cannot decide between alternatives, prefer a controlled test over
+speculation.
+
+## File modification authority
+
+Claude Code is the only agent permitted to modify:
+
+- files in the development repository
+- approved ComfyUI workflow files
+- approved ComfyUI configuration or code
+
+Codex remains read-only when invoked through Claude Code.
+
+This restriction concerns file operations only. It does not make Codex
+subordinate in architectural or technical decision-making.
+
+Codex may propose concrete changes, algorithms, structures and complete
+solutions, but Claude must evaluate and implement them.
 
 ## Current architecture status
 
@@ -82,15 +157,18 @@ Work in small, testable steps.
 For every implementation step:
 
 1. Inspect the relevant files and current state.
-2. State the exact scope of the proposed change.
-3. Identify files that would be modified.
-4. Explain the expected result and the test.
-5. Change only one logically related part.
-6. Run all locally possible validation.
-7. Request the user's real ComfyUI runtime test when local validation is not
+2. Complete the joint Claude-Codex decision process.
+3. State the exact scope of the proposed change.
+4. Identify files that would be modified.
+5. Explain the expected result and the test.
+6. Obtain user approval where required.
+7. Let Claude change only one logically related part.
+8. Run all locally possible validation.
+9. Request the user's real ComfyUI runtime test when local validation is not
    sufficient.
-8. Review the resulting diff.
-9. Record unresolved risks honestly.
+10. Let Claude and Codex jointly evaluate the resulting evidence.
+11. Review the complete diff.
+12. Record unresolved risks honestly.
 
 Do not bundle unrelated fixes.
 
@@ -103,6 +181,8 @@ Distinguish clearly between:
 - live runtime test results
 - historical results from older hardware
 - assumptions requiring a new test
+- conclusions agreed by both agents
+- unresolved disagreement between the agents
 
 File or node presence is not proof of runtime compatibility.
 
@@ -110,6 +190,9 @@ Disk size is not proof of simultaneous VRAM usage.
 
 Do not claim visual quality, identity preservation or edit locality without an
 actual controlled image test.
+
+Consensus between Claude and Codex is not evidence by itself. Their conclusion
+must remain grounded in files, source code, logs, documentation or tests.
 
 ## Workflow requirements
 
@@ -144,6 +227,9 @@ Relevant evaluation categories include:
 - execution time
 - reproducibility
 
+When Claude and Codex prefer different technically plausible solutions, design
+the smallest controlled comparison that can resolve the disagreement.
+
 ## Communication
 
 Normal discussion may be in German.
@@ -153,4 +239,5 @@ in English unless the user explicitly requests otherwise.
 
 Prefer complete copy-and-paste-ready files and commands.
 
-Report failures and uncertainty directly. Do not hide incomplete validation.
+Report failures and uncertainty directly. Do not hide incomplete validation,
+agent disagreement or unsupported assumptions.
