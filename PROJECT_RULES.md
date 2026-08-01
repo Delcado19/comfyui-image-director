@@ -125,13 +125,36 @@ Current candidate execution branches:
 - Qwen Image Edit 2511: future A/B candidate
 - FLUX.2: outside the Version-1 critical path until separately measured
 
-The standalone analyzer implementation is unresolved.
+The standalone analyzer loader and minimal inference path are smoke-tested.
+`AILab_QwenVL_GGUF_Advanced` can load the installed Qwen2.5-VL-7B GGUF pair
+(the same files Qwen Image Edit uses as its own text encoder) as an
+independent analyzer, via a `gguf_models.json` catalog entry plus two file
+hardlinks — no new download, no file copy. See
+`docs/source/IMAGE_DIRECTOR_AUDIT.md` §13.
 
-Do not assume that the installed Qwen2.5-VL files used by Qwen Image Edit can
-also be loaded directly as an independent analyzer.
+Analyzer-only Test A and the sequential Analyzer -> Editor Test C (one
+graph, one queue press, one reference image) both succeeded. Do not
+describe Test A or Test C as blocked.
 
-The current audit states that analyzer-only Test A and combined Test C were
-blocked pending a valid Layer-A analyzer decision.
+VRAM was released back to idle after the analyzer step only because
+`keep_model_loaded=false` was set explicitly on the analyzer node; its
+default is `true`. Any reusable Image Director workflow must set
+`keep_model_loaded=false` for the tested sequential path's VRAM behavior to
+hold.
+
+What remains unresolved is the productive Image Director logic, not the
+analyzer loader itself:
+
+- the structured JSON edit-plan schema
+- analyzer prompt design and plan quality
+- the task router
+- the combined Analyzer -> Editor path with two or three reference images
+  in one graph (only the one-reference-image case has been measured)
+- visual acceptance tests (identity preservation, edit locality, instruction
+  compliance) on real photos
+
+Do not infer structured JSON quality, routing correctness, or image quality
+from the loader/runtime smoke tests alone.
 
 ## Mandatory safety rules
 

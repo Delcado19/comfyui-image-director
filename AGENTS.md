@@ -221,8 +221,18 @@ without an actual controlled runtime test.
 - Do not add SageAttention fallback paths unless explicitly requested.
 - Treat FLUX.2 as outside the Version-1 critical path unless the current task
   explicitly concerns it.
-- Treat the standalone analyzer implementation as unresolved until supported
-  by a working loader and runtime test.
+- Treat the Qwen2.5-VL-7B GGUF analyzer path (`AILab_QwenVL_GGUF_Advanced`)
+  as loader- and runtime-smoke-tested (`docs/source/IMAGE_DIRECTOR_AUDIT.md`
+  §13, Test A and Test C) — not merely inventory-present.
+- Do not infer from that smoke test that structured JSON output, edit-plan
+  quality, router logic, or image quality are validated; none of those have
+  a controlled test yet.
+- The tested sequential Analyzer -> Editor path depends on
+  `keep_model_loaded=false` on the analyzer node (its default is `true`);
+  do not assume the tested VRAM-release behavior holds without that setting.
+- Treat the combined Analyzer -> Editor path with two or three reference
+  images in one graph as untested — Test C measured only the
+  one-reference-image case.
 
 ## MCP behavior
 
