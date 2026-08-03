@@ -461,8 +461,27 @@ now the real binding constraint** - do not treat multi-reference edit
 routing as safe from this result; it needs its own dedicated VRAM pass
 before being called safe. Also newly observed: neither branch's models are
 released after the run completes (both settle to a resident plateau, not
-back to idle) - back-to-back production usage without a `/free` between
-requests is not characterized by this test.
+back to idle).
+
+**Back-to-back requests without `/free`, characterized and found unsafe as
+a default policy (`tests/vram/router/RESULTS_RVchain.md`):** running
+RV-generate then immediately RV-edit with no `/free` in between completed
+successfully at n=1, but hit **901 MiB free at its worst sampled point -
+the tightest margin recorded in this project's history** - during the
+*analyzer's* own load stacking on top of the still-fully-resident previous
+branch, not during either diffusion branch's sampling. Root cause,
+confirmed by Codex before the test and reproduced by it:
+`QwenVLStructuredGGUF` loads its GGUF model directly via
+`llama_cpp.Llama(...)` (`comfyui-qwenvl-structured-gguf`'s
+`nodes/structured_gguf_vl.py:78-102`), outside ComfyUI's
+`comfy.model_management` - so it cannot trigger eviction of stale resident
+models itself. Eviction only happened a few seconds later, once the edit
+branch's own `VAELoader` (a ComfyUI-managed node) requested memory and
+comfy's own eviction logic reacted to *that* request - the analyzer's own
+load remained safe only until that happened, not because of anything that
+proactively made room for it. See the mandatory safety rule below - this
+is treated as a hard "do not do this in production yet" rule, not just a
+documented open concern, per Codex's explicit recommendation.
 
 **Not settled by this milestone:**
 
@@ -472,6 +491,12 @@ requests is not characterized by this test.
   images are actually supplied) is still not implemented. RV-edit's
   already-tight single-reference margin is a concrete reason this needs
   its own VRAM re-test, not an extrapolation from the numbers above.
+- a fix for the back-to-back/no-`/free` gap above - two candidate
+  directions are documented in `RESULTS_RVchain.md` (make the analyzer
+  proactively request eviction before its own `Llama(...)` load, or adopt
+  an operational `/free`-between-requests policy) but neither has been
+  chosen or implemented; that decision needs the user's input, not a
+  unilateral pick
 - plan/content quality (`is_local_region` accuracy, edit locality on a real
   photo, identity preservation) - unchanged from the existing structural-
   only findings above
@@ -482,6 +507,14 @@ requests is not characterized by this test.
 
 ## Mandatory safety rules
 
+- Do not use the V1 task router for repeated back-to-back production
+  requests without calling `POST /free {"unload_models": true,
+  "free_memory": true}` between requests, until the analyzer-load/eviction
+  gap is fixed (see "Back-to-back requests without `/free`" above and
+  `tests/vram/router/RESULTS_RVchain.md`) or a wider-margin repeated-use
+  test passes. A single measured run passed with only 901 MiB free at its
+  worst sampled point - not a wide enough margin to call unprotected
+  repeated usage safe.
 - Do not modify ComfyUI files unless the current user-approved task requires it.
 - Do not install or download models, nodes or dependencies without explicit
   user approval.

@@ -292,9 +292,23 @@ without an actual controlled runtime test.
   Codex review "now the real binding constraint." Do not extrapolate this
   as safe for multi-reference (`image2`/`image3`) routing once that's
   built - it needs its own dedicated VRAM pass. Also: neither branch's
-  models unload after a run completes (both stay GPU-resident) - repeated
-  back-to-back production requests without a `/free` in between are not
-  characterized by this test.
+  models unload after a run completes (both stay GPU-resident).
+- **Hard rule (see `PROJECT_RULES.md`'s mandatory safety rules): do not
+  use the V1 router for repeated back-to-back requests without `POST
+  /free` between them.** Characterized in
+  `tests/vram/router/RESULTS_RVchain.md`: running RV-generate then
+  immediately RV-edit with no `/free` hit 901 MiB free at its worst
+  sampled point - the tightest margin recorded in this project - during
+  the *analyzer's own load* stacking on the still-resident previous
+  branch, not during diffusion sampling. Root cause: `QwenVLStructuredGGUF`
+  loads via direct `llama_cpp.Llama(...)`
+  (`comfyui-qwenvl-structured-gguf/nodes/structured_gguf_vl.py:78-102`),
+  outside `comfy.model_management`, so it cannot trigger eviction itself;
+  eviction only happened seconds later when a ComfyUI-managed node (the
+  edit branch's own `VAELoader`) requested memory. No fix has been chosen
+  or implemented - two candidate directions are documented in
+  `RESULTS_RVchain.md`, deferred to the user/Codex, not decided
+  unilaterally.
 - The tested sequential Analyzer -> Editor path depends on
   `keep_model_loaded=false` on the analyzer node (its default is `true`);
   do not assume the tested VRAM-release behavior holds without that setting.
