@@ -18,201 +18,28 @@ was ever provided. Narrowing the schema per call makes that grammatically
 impossible instead of merely instructing against it.
 """
 import json
+import os
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+from image_director.edit_plan_schema import edit_plan_schema  # noqa: E402
 
 MODEL_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\Qwen\Qwen2.5-VL-7B-Instruct-GGUF\Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf"
 MMPROJ_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\Qwen\Qwen2.5-VL-7B-Instruct-GGUF\Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf"
-
-GENERATE_PLAN = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["schema_version", "task", "user_instruction", "prompt"],
-    "properties": {
-        "schema_version": {"const": "1.0"},
-        "task": {"const": "generate"},
-        "user_instruction": {"type": "string", "minLength": 1},
-        "prompt": {"type": "string", "minLength": 1},
-    },
-}
-
-IMAGE_SLOT = {
-    "type": "object",
-    "additionalProperties": False,
-    "required": ["role"],
-    "properties": {
-        "role": {
-            "enum": [
-                "source", "garment_reference", "material_style_reference",
-                "identity_reference", "object_reference", "pose_reference",
-                "scene_reference", "other_reference",
-            ]
-        }
-    },
-}
-
-EDIT_OP_ENUM = {"replace", "add", "remove", "adjust", "restyle"}
-
-
-def edit_plan_single_image():
-    """images: image1 only. edits[] has no reference_slots property at all -
-    grammatically impossible to hallucinate a reference to a nonexistent
-    image2/image3."""
-    return {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "schema_version", "task", "user_instruction", "prompt",
-            "is_local_region", "images", "edits", "preserve",
-        ],
-        "properties": {
-            "schema_version": {"const": "1.0"},
-            "task": {"const": "edit"},
-            "user_instruction": {"type": "string", "minLength": 1},
-            "prompt": {"type": "string", "minLength": 1},
-            "is_local_region": {"type": "boolean"},
-            "images": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["image1"],
-                "properties": {
-                    "image1": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["role"],
-                        "properties": {"role": {"const": "source"}},
-                    },
-                },
-            },
-            "edits": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["subject", "region", "operation"],
-                    "properties": {
-                        "subject": {"type": "string", "minLength": 1},
-                        "region": {"type": "string", "minLength": 1},
-                        "operation": {"enum": sorted(EDIT_OP_ENUM)},
-                    },
-                },
-            },
-            "preserve": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
-        },
-    }
-
-
-def edit_plan_two_image():
-    """images: image1 + image2, both required. edits[] requires
-    reference_slots == ["image2"] - image2 genuinely exists for this call."""
-    return {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "schema_version", "task", "user_instruction", "prompt",
-            "is_local_region", "images", "edits", "preserve",
-        ],
-        "properties": {
-            "schema_version": {"const": "1.0"},
-            "task": {"const": "edit"},
-            "user_instruction": {"type": "string", "minLength": 1},
-            "prompt": {"type": "string", "minLength": 1},
-            "is_local_region": {"type": "boolean"},
-            "images": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["image1", "image2"],
-                "properties": {
-                    "image1": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["role"],
-                        "properties": {"role": {"const": "source"}},
-                    },
-                    "image2": IMAGE_SLOT,
-                },
-            },
-            "edits": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["subject", "region", "operation", "reference_slots"],
-                    "properties": {
-                        "subject": {"type": "string", "minLength": 1},
-                        "region": {"type": "string", "minLength": 1},
-                        "operation": {"enum": sorted(EDIT_OP_ENUM)},
-                        "reference_slots": {"type": "array", "minItems": 1, "items": {"const": "image2"}},
-                    },
-                },
-            },
-            "preserve": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
-        },
-    }
-
-
-def edit_plan_three_image():
-    """images: image1 + image2 + image3, all required. edits[] requires
-    reference_slots, each a non-empty subset of {"image2","image3"} - image1
-    is the source, never a valid reference to itself."""
-    return {
-        "type": "object",
-        "additionalProperties": False,
-        "required": [
-            "schema_version", "task", "user_instruction", "prompt",
-            "is_local_region", "images", "edits", "preserve",
-        ],
-        "properties": {
-            "schema_version": {"const": "1.0"},
-            "task": {"const": "edit"},
-            "user_instruction": {"type": "string", "minLength": 1},
-            "prompt": {"type": "string", "minLength": 1},
-            "is_local_region": {"type": "boolean"},
-            "images": {
-                "type": "object",
-                "additionalProperties": False,
-                "required": ["image1", "image2", "image3"],
-                "properties": {
-                    "image1": {
-                        "type": "object",
-                        "additionalProperties": False,
-                        "required": ["role"],
-                        "properties": {"role": {"const": "source"}},
-                    },
-                    "image2": IMAGE_SLOT,
-                    "image3": IMAGE_SLOT,
-                },
-            },
-            "edits": {
-                "type": "array",
-                "minItems": 1,
-                "items": {
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": ["subject", "region", "operation", "reference_slots"],
-                    "properties": {
-                        "subject": {"type": "string", "minLength": 1},
-                        "region": {"type": "string", "minLength": 1},
-                        "operation": {"enum": sorted(EDIT_OP_ENUM)},
-                        "reference_slots": {
-                            "type": "array",
-                            "minItems": 1,
-                            "items": {"enum": ["image2", "image3"]},
-                        },
-                    },
-                },
-            },
-            "preserve": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
-        },
-    }
 
 
 CASES = {
     "generate": {
         "instruction": "Create a photorealistic product photo of a matte black ceramic mug on a walnut desk in morning window light.",
         "images": [],
-        "schema": {"oneOf": [GENERATE_PLAN, edit_plan_single_image()]},
+        # source_image=True here (not False) is deliberate, not an oversight:
+        # it preserves the exact schema this case was originally validated
+        # with (oneOf(generate, single-image edit), even though no image is
+        # actually wired in) - see PROJECT_RULES.md's evidence rules on not
+        # silently changing validated behavior during a refactor. A stricter
+        # source_image=False generate-only schema is available and may be
+        # worth adopting later, just not folded into this pass.
+        "schema": edit_plan_schema(source_image=True, reference_count=0),
         "guidance": (
             'You are creating a structured plan for an image generation/editing pipeline. '
             'schema_version is always "1.0". No image is attached - this is a text-to-image '
@@ -224,7 +51,7 @@ CASES = {
     "edit_local": {
         "instruction": "In the attached image, remove only the blue square. Keep the red circle, the background, and the composition unchanged.",
         "images": ["imgdir_jsontest_shapes.png"],
-        "schema": {"oneOf": [GENERATE_PLAN, edit_plan_single_image()]},
+        "schema": edit_plan_schema(source_image=True, reference_count=0),
         "guidance": (
             'You are creating a structured plan for an image generation/editing pipeline. '
             'schema_version is always "1.0". task="edit". Only one image (image1, the source) '
@@ -239,7 +66,7 @@ CASES = {
     "edit_global": {
         "instruction": "Restyle the attached image as a clean pencil sketch. Keep the same shapes, layout, and framing.",
         "images": ["imgdir_jsontest_shapes.png"],
-        "schema": {"oneOf": [GENERATE_PLAN, edit_plan_single_image()]},
+        "schema": edit_plan_schema(source_image=True, reference_count=0),
         "guidance": (
             'You are creating a structured plan for an image generation/editing pipeline. '
             'schema_version is always "1.0". task="edit". Only one image (image1, the source) '
@@ -254,7 +81,7 @@ CASES = {
     "edit_reference_2image": {
         "instruction": "In image1, replace the blue square with a shape matching the reference shown in image2. Keep the red circle and background unchanged.",
         "images": ["imgdir_jsontest_shapes.png", "imgdir_multitest_1_star.png"],
-        "schema": {"oneOf": [GENERATE_PLAN, edit_plan_two_image()]},
+        "schema": edit_plan_schema(source_image=True, reference_count=1),
         "guidance": (
             'You are creating a structured plan for an image editing pipeline. schema_version '
             'is always "1.0". task="edit". Picture 1 (image1) is the source image being edited; '
@@ -273,7 +100,7 @@ CASES = {
             "imgdir_multitest_1_star.png",
             "imgdir_multitest_2_triangle.png",
         ],
-        "schema": {"oneOf": [GENERATE_PLAN, edit_plan_three_image()]},
+        "schema": edit_plan_schema(source_image=True, reference_count=2),
         "guidance": (
             'You are creating a structured plan for an image editing pipeline. schema_version '
             'is always "1.0". task="edit". Picture 1 (image1) is the source image being edited; '
