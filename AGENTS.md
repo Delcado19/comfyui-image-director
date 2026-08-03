@@ -279,9 +279,22 @@ without an actual controlled runtime test.
   the instruction) in both directions, n=1 per direction. Scoped to the
   single-source-image case only - multi-reference routing and
   availability-specific schema selection are still not implemented. Do not
-  claim VRAM margins, reliability beyond n=1, or plan/content quality from
-  this test; those remain separately unresolved as documented elsewhere in
-  this file and in `PROJECT_RULES.md`.
+  claim reliability beyond n=1 or plan/content quality from this test;
+  those remain separately unresolved as documented elsewhere in this file
+  and in `PROJECT_RULES.md`.
+- VRAM margins for the router graph itself ARE now measured
+  (`tests/vram/router/RESULTS_RV.md`) - both directions show the same
+  clean analyzer-peak/trough/branch-peak shape as the non-router path, no
+  sampled overlap. Z-Image Turbo (generate) has comfortable margin (2391
+  MiB free, single brief spike). **Qwen Image Edit 2511 (edit) is tight:
+  954 MiB free, sustained ~37s** - passes this project's 300 MiB threshold
+  but is the tightest margin recorded for any passing VRAM test here, per
+  Codex review "now the real binding constraint." Do not extrapolate this
+  as safe for multi-reference (`image2`/`image3`) routing once that's
+  built - it needs its own dedicated VRAM pass. Also: neither branch's
+  models unload after a run completes (both stay GPU-resident) - repeated
+  back-to-back production requests without a `/free` in between are not
+  characterized by this test.
 - The tested sequential Analyzer -> Editor path depends on
   `keep_model_loaded=false` on the analyzer node (its default is `true`);
   do not assume the tested VRAM-release behavior holds without that setting.

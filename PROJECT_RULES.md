@@ -440,18 +440,38 @@ now consolidated in `tests/lib/comfy_submit.py`, imported by all four
 ComfyUI-submitting test scripts in this project, so any future test script
 gets the guard by construction instead of needing its own copy.
 
+**VRAM margins, now measured (`tests/vram/router/RESULTS_RV.md`):** the
+router graph's own VRAM behavior was re-measured with the actual router
+graph (not a stand-in), fresh `/free`-forced cold floor before each run,
+250ms `nvidia-smi` sampling throughout, and `execution_cached.nodes: []`
+confirming genuine fresh execution (not a node-output cache hit) for both
+directions. Both show the same two-plateau-with-trough shape as Test
+C/E2/E3's non-router path: analyzer loads, peaks, and fully releases
+*before* the selected branch begins loading - no sampled overlap in either
+direction. RV-generate (Z-Image Turbo): worst sampled margin 2391 MiB free,
+a single ~250ms spike, comfortable. **RV-edit (Qwen Image Edit 2511): worst
+sampled margin 954 MiB free, sustained for ~37s** - still above this
+project's 300 MiB pass threshold, but the tightest margin recorded for any
+passing VRAM test in this project, and tighter than E2/E3's own *2-3
+reference* margins (1192/1303 MiB free) despite being only 1 reference
+image here - most likely the current 2511 + abliterated-encoder pair
+having a larger combined footprint than E2/E3's older 2509 + standard-
+encoder pair (exact contributor not isolated). Per Codex review: **this is
+now the real binding constraint** - do not treat multi-reference edit
+routing as safe from this result; it needs its own dedicated VRAM pass
+before being called safe. Also newly observed: neither branch's models are
+released after the run completes (both settle to a resident plateau, not
+back to idle) - back-to-back production usage without a `/free` between
+requests is not characterized by this test.
+
 **Not settled by this milestone:**
 
 - multi-reference (`image2`/`image3`) routing - this test is the
   single-source-image case only; availability-specific schema selection at
   the router level (building the right schema variant for however many
-  images are actually supplied) is still not implemented
-- VRAM margins for this specific combined router graph have not been
-  measured the way E2/E3 measured the old analyzer+editor path. The
-  lazy-switch design's expected side benefit (the switch's boolean itself
-  depends on the analyzer's output, so the selected branch's nodes cannot
-  enter the pending execution set until the analyzer finishes) is a design
-  expectation, not yet independently VRAM/timestamp-verified for this graph
+  images are actually supplied) is still not implemented. RV-edit's
+  already-tight single-reference margin is a concrete reason this needs
+  its own VRAM re-test, not an extrapolation from the numbers above.
 - plan/content quality (`is_local_region` accuracy, edit locality on a real
   photo, identity preservation) - unchanged from the existing structural-
   only findings above
