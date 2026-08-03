@@ -1,51 +1,30 @@
-"""Submit one structured-analyzer graph to ComfyUI's real queue, poll, capture PreviewAny's text output."""
+"""
+Submit one structured-analyzer graph to ComfyUI's real queue, poll, capture
+PreviewAny's text output. submit()/poll_history() (the node_errors-checking
+HTTP layer - see tests/lib/comfy_submit.py's docstring for why that check
+exists) now live in the shared module, used by every ComfyUI-submitting
+test script in this project.
+"""
 import json
 import sys
 import time
-import urllib.request
+from pathlib import Path
 
-BASE = "http://127.0.0.1:8188"
-
-
-def get_queue():
-    with urllib.request.urlopen(f"{BASE}/queue", timeout=15) as resp:
-        return json.loads(resp.read())
-
-
-def post_prompt(graph: dict) -> str:
-    data = json.dumps(graph).encode("utf-8")
-    req = urllib.request.Request(f"{BASE}/prompt", data=data, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        body = json.loads(resp.read())
-    return body["prompt_id"]
-
-
-def poll_history(prompt_id: str, timeout_s: int = 120) -> dict:
-    start = time.time()
-    while time.time() - start < timeout_s:
-        with urllib.request.urlopen(f"{BASE}/history/{prompt_id}", timeout=15) as resp:
-            hist = json.loads(resp.read())
-        if prompt_id in hist:
-            return hist[prompt_id]
-        time.sleep(0.5)
-    raise TimeoutError(f"prompt {prompt_id} did not finish within {timeout_s}s")
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from lib.comfy_submit import assert_queue_empty, poll_history, submit  # noqa: E402
 
 
 if __name__ == "__main__":
     graph_path = sys.argv[1]
     out_path = sys.argv[2]
 
-    q = get_queue()
-    pending = len(q.get("queue_running", [])) + len(q.get("queue_pending", []))
-    if pending:
-        print(json.dumps({"event": "abort", "reason": "queue not empty", "queue": q}))
-        sys.exit(2)
+    assert_queue_empty()
 
     with open(graph_path, "r", encoding="utf-8") as f:
         graph = json.load(f)
 
     t0 = time.time()
-    prompt_id = post_prompt(graph)
+    prompt_id = submit(graph)
     print(json.dumps({"event": "submitted", "prompt_id": prompt_id, "t": t0}))
 
     result = poll_history(prompt_id)

@@ -126,13 +126,19 @@ without also asserting `status.completed`, "no `[ERROR]` in log", and
 "an image was actually produced". Fixed: `wait_and_report()` now raises on
 any of those three conditions instead of just reporting them. Also flagged
 as a minor, non-blocking gap: the same missing-`node_errors`-check pattern
-exists in `tests/schema/analyzer-json*/submit_and_capture.py` and
+existed in `tests/schema/analyzer-json*/submit_and_capture.py` and
 `tests/vram/combined-multiref/submit_and_monitor.py` - those runs' saved
-artifacts are not invalidated (evidence was cross-checked another way at
-the time), but a future reuse of either script should get the same guard,
-or the project should consolidate on one shared submit helper. Not fixed
-in this pass - out of scope for the router milestone itself, noted here so
-it isn't lost.
+artifacts were not invalidated (evidence was cross-checked another way at
+the time). Fixed in a follow-up pass: the shared `submit()`/`poll_history()`
+HTTP layer was extracted to `tests/lib/comfy_submit.py` (Codex's own
+"consolidate on one shared submit helper" suggestion) and all four
+ComfyUI-submitting test scripts in this project now import it, so the
+`node_errors` check applies everywhere by construction instead of needing
+to be copy-pasted per script. Re-verified with a live re-run of the
+generate case through the refactored `submit_and_check.py`
+(prompt_id `55183e7b-8d75-4457-9732-005b3641f0e0`, 44.85s, same log
+signature, same successful output) - behavior unchanged after the
+refactor.
 
 ## What this does not settle
 

@@ -4,35 +4,23 @@ until it finishes, printing a small JSON status line ComfyUI itself
 reports (no VRAM measurement here - that is done by a separate nvidia-smi
 loop started/stopped around this script by the caller).
 
+submit()/poll_history() (the node_errors-checking HTTP layer - see
+tests/lib/comfy_submit.py's docstring for why that check exists) now live
+in the shared module, used by every ComfyUI-submitting test script in this
+project.
+
 Usage: python submit_and_monitor.py <graph.json>
 """
 import json
 import os
 import sys
 import time
-import urllib.request
+from pathlib import Path
 
-BASE = "http://127.0.0.1:8188"
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from lib.comfy_submit import poll_history, submit  # noqa: E402
+
 COMFY_OUTPUT_DIR = r"E:\AI_Art"
-
-
-def post_prompt(graph: dict) -> str:
-    data = json.dumps(graph).encode("utf-8")
-    req = urllib.request.Request(f"{BASE}/prompt", data=data, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        body = json.loads(resp.read())
-    return body["prompt_id"]
-
-
-def poll_history(prompt_id: str, timeout_s: int = 240) -> dict:
-    start = time.time()
-    while time.time() - start < timeout_s:
-        with urllib.request.urlopen(f"{BASE}/history/{prompt_id}", timeout=15) as resp:
-            hist = json.loads(resp.read())
-        if prompt_id in hist:
-            return hist[prompt_id]
-        time.sleep(0.5)
-    raise TimeoutError(f"prompt {prompt_id} did not finish within {timeout_s}s")
 
 
 if __name__ == "__main__":
@@ -41,10 +29,10 @@ if __name__ == "__main__":
         graph = json.load(f)
 
     t0 = time.time()
-    prompt_id = post_prompt(graph)
+    prompt_id = submit(graph)
     print(json.dumps({"event": "submitted", "prompt_id": prompt_id, "t": t0}))
 
-    result = poll_history(prompt_id)
+    result = poll_history(prompt_id, timeout_s=240)  # was this script's own default before consolidation
     t1 = time.time()
 
     status = result.get("status", {})

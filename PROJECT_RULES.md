@@ -432,11 +432,13 @@ time, and (per Codex review) also now hard-fails if the run didn't
 complete, any `[ERROR]` line appeared in the log during the run, or no
 image output was produced - checking `node_errors` alone still left room
 to misread a later empty/errored result as a pass. The same missing-check
-pattern exists, unfixed, in `tests/schema/analyzer-json*/submit_and_capture.py`
-and `tests/vram/combined-multiref/submit_and_monitor.py` - those runs'
-saved evidence is not invalidated (cross-checked another way at the time),
-but reusing either script, or writing a new one, should carry the same
-guard.
+pattern existed in `tests/schema/analyzer-json*/submit_and_capture.py` and
+`tests/vram/combined-multiref/submit_and_monitor.py` - those runs' saved
+evidence was not invalidated (cross-checked another way at the time).
+Fixed: the `node_errors`-checking `submit()`/`poll_history()` HTTP layer is
+now consolidated in `tests/lib/comfy_submit.py`, imported by all four
+ComfyUI-submitting test scripts in this project, so any future test script
+gets the guard by construction instead of needing its own copy.
 
 **Not settled by this milestone:**
 
