@@ -287,7 +287,10 @@ analyzer loader itself:
   caller-side and response-side checks that `images.image1` is present.
   What's still missing: nothing calls `edit_plan_schema()` at runtime from
   actual node inputs yet - that's the router's job, not done
-- the task router
+- the task router's routing *mechanism* is now built and smoke-tested (see
+  "V1 task router" section below) - what's still missing: availability-
+  specific schema selection (only the 1-source-image case is wired), a
+  repeat-seed reliability pass, and any plan/content-quality guarantee
 - visual acceptance tests (identity preservation, edit locality, instruction
   compliance) on real photos
 
@@ -389,6 +392,71 @@ some other warm-cache policy) on every run is not decided. This fix was validate
 ad-hoc API-format test graph, not as an actual saved workflow file, and
 only for infrastructure/VRAM behavior — no image-quality, identity, or
 edit-locality claim is supported by these tests.
+
+### V1 task router — routing mechanism validated end-to-end, scope-limited
+
+Full writeup: `tests/router/RESULTS_router_v1.md`, `tests/router/RESULTS_lazy_switch.md`.
+Graph builder: `tests/router/build_router_graph.py`.
+
+**Mechanism validated.** One graph, one queue press: `QwenVLStructuredGGUF`
+(analyzer, grammar-constrained JSON) emits `task`, extracted via
+`GetTextFromJson` and compared with `easy compare`, feeding `easy ifElse`'s
+`boolean` to lazily select exactly one of two fully-built, expensive
+branches - Z-Image Turbo (generate) or Qwen Image Edit 2511 (edit) - to a
+single final `SaveImage`. `easy ifElse`'s lazy evaluation was first proven
+in isolation with cheap stand-ins
+(`tests/router/RESULTS_lazy_switch.md`: the unused branch's entire upstream
+chain, including a multi-second model load, is never scheduled, confirmed
+both from `comfy_execution/graph.py` source and empirically, both switch
+directions). Then proven with the real branches
+(`tests/router/RESULTS_router_v1.md`): a generate instruction ran only
+Z-Image Turbo's components (log showed `ZImageTEModel_`/`Lumina2`/
+`AutoencodingEngine`, no Qwen Image Edit lines) and produced an image
+visually matching the instruction; an edit instruction ran only Qwen Image
+Edit 2511's components (log showed `QwenImageTEModel_`/`QwenImage`, no
+Z-Image Turbo lines) and produced an image with exactly the requested
+change applied, everything else visually unchanged. n=1 per direction -
+documented and Codex-reviewed as adequate to close the *mechanism*
+milestone, explicitly not a reliability characterization.
+
+**A real mistake surfaced and fixed in the process:** the first submission
+used the official ComfyUI Z-Image Turbo template's file names
+(`z_image_turbo_bf16.safetensors`, `qwen_3_4b.safetensors`) without
+verifying they were installed - they were not. `POST /prompt` returned a
+`prompt_id` with HTTP 200 (no exception), but the response body's
+`node_errors` field held a "Value not in list" validation error, and
+`/history` showed `status_str: success` with empty `outputs: {}` - a
+silent failure that checking only HTTP status would miss entirely. Fixed
+in `tests/router/submit_and_check.py`: raises on `node_errors` at submit
+time, and (per Codex review) also now hard-fails if the run didn't
+complete, any `[ERROR]` line appeared in the log during the run, or no
+image output was produced - checking `node_errors` alone still left room
+to misread a later empty/errored result as a pass. The same missing-check
+pattern exists, unfixed, in `tests/schema/analyzer-json*/submit_and_capture.py`
+and `tests/vram/combined-multiref/submit_and_monitor.py` - those runs'
+saved evidence is not invalidated (cross-checked another way at the time),
+but reusing either script, or writing a new one, should carry the same
+guard.
+
+**Not settled by this milestone:**
+
+- multi-reference (`image2`/`image3`) routing - this test is the
+  single-source-image case only; availability-specific schema selection at
+  the router level (building the right schema variant for however many
+  images are actually supplied) is still not implemented
+- VRAM margins for this specific combined router graph have not been
+  measured the way E2/E3 measured the old analyzer+editor path. The
+  lazy-switch design's expected side benefit (the switch's boolean itself
+  depends on the analyzer's output, so the selected branch's nodes cannot
+  enter the pending execution set until the analyzer finishes) is a design
+  expectation, not yet independently VRAM/timestamp-verified for this graph
+- plan/content quality (`is_local_region` accuracy, edit locality on a real
+  photo, identity preservation) - unchanged from the existing structural-
+  only findings above
+- the Z-Image Turbo checkpoint/text-encoder pair used here
+  (`jibMixZIT_v10.safetensors` + `Lockout-Qwen3-4b-zimage-hereticV2-q8.gguf`,
+  both user-chosen) was not benchmarked against the other checkpoint/CLIP
+  options sitting on disk
 
 ## Mandatory safety rules
 

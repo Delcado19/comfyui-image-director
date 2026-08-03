@@ -21,7 +21,7 @@
     "prompt": {
       "type": "string",
       "minLength": 1,
-      "description": "Model-facing prompt text handed to the selected branch (Z-Image Turbo for generate, Qwen Image Edit 2509 for edit)."
+      "description": "Model-facing prompt text handed to the selected branch (Z-Image Turbo for generate, Qwen Image Edit 2511 for edit)."
     },
     "is_local_region": {
       "type": "boolean",

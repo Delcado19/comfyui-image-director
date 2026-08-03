@@ -241,10 +241,13 @@ without an actual controlled runtime test.
   the 2026-08-03 model swaps and will fail if re-run without updating
   `MODEL_PATH`/`MMPROJ_PATH` first - do not treat their historic outputs as
   reproducible with the current install, only as a historical record.
-- Do not infer structured JSON output, plan quality, router logic, or image
-  quality from Test A/C alone. Structured JSON *shape* has its own separate,
-  passing tests (see below) - plan/content quality, router logic, and image
-  quality remain separately unresolved, not covered by any test yet.
+- Do not infer structured JSON output, plan quality, or image quality from
+  Test A/C alone. Structured JSON *shape* has its own separate, passing
+  tests (see below) - plan/content quality and image quality remain
+  separately unresolved, not covered by any test yet. The router's
+  *routing mechanism itself* is now separately tested and passing (see the
+  V1 task router bullet below) - it is not inferred from Test A/C, it has
+  its own direct evidence.
 - For structured edit-plan JSON output specifically, use `QwenVLStructuredGGUF`
   (external repo `comfyui-qwenvl-structured-gguf`, MIT, junction-installed
   into `custom_nodes`, not yet Comfy Registry published), not prompt-only
@@ -266,6 +269,19 @@ without an actual controlled runtime test.
   availability-specific schema per call, not by trusting the model). Do not
   claim edit-plan quality, routing correctness, or image quality from a
   structural pass alone.
+- Treat the V1 task router's *routing mechanism* as built and smoke-tested
+  end-to-end (`tests/router/RESULTS_router_v1.md`,
+  `tests/router/RESULTS_lazy_switch.md`, `tests/router/build_router_graph.py`):
+  one graph, one queue press, `QwenVLStructuredGGUF` -> `task` extraction ->
+  `easy compare` -> `easy ifElse` lazily selects Z-Image Turbo (generate) or
+  Qwen Image Edit 2511 (edit), confirmed via log analysis (only the selected
+  branch's components loaded) and visual inspection of the output (matched
+  the instruction) in both directions, n=1 per direction. Scoped to the
+  single-source-image case only - multi-reference routing and
+  availability-specific schema selection are still not implemented. Do not
+  claim VRAM margins, reliability beyond n=1, or plan/content quality from
+  this test; those remain separately unresolved as documented elsewhere in
+  this file and in `PROJECT_RULES.md`.
 - The tested sequential Analyzer -> Editor path depends on
   `keep_model_loaded=false` on the analyzer node (its default is `true`);
   do not assume the tested VRAM-release behavior holds without that setting.
