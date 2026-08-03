@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "user_instruction": "Restyle the attached image as a clean pencil sketch.",
+  "prompt": {
+    "role": "source"
+  },
+  "is_local_region": false,
+  "images": {},
+  "edits": [
+    {
+      "subject": "",
+      "region": "",
+      "operation": "restyle",
+      "reference_slots": []
+    }
+  ],
+  "preserve": ["shapes", "layout", "framing"]
+}

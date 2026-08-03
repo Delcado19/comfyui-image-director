@@ -1,0 +1,30 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "user_instruction": "Replace only the man's upper garment with the garment from image 2.",
+  "prompt": "Replace only the man's upper garment using image2. Preserve face, hair, pose, hands, trousers, other people, background, lighting, camera, and framing.",
+  "is_local_region": true,
+  "images": {
+    "image1": { "role": "source" },
+    "image2": { "role": "garment_reference" }
+  },
+  "edits": [
+    {
+      "subject": "man",
+      "region": "upper_clothing",
+      "operation": "replace",
+      "reference_slots": ["image2"]
+    }
+  ],
+  "preserve": [
+    "face",
+    "hair",
+    "pose",
+    "hands",
+    "trousers",
+    "background",
+    "lighting",
+    "camera",
+    "framing"
+  ]
+}

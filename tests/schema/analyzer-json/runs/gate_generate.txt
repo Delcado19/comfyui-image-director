@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0",
+  "task": "generate",
+  "user_instruction": "Create a photorealistic product photo of a matte black ceramic mug on a walnut desk in morning window light.",
+  "prompt": {
+    "role": "source"
+  }
+}

@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comfyui-image-director.local/schema/edit_plan.schema.json",
+  "title": "Image Director structured edit plan",
+  "$comment": "V1 schema. Emitted by the Analyzer (Layer A, Qwen2.5-VL 7B) and consumed by the router and generation/editing branches (Layer B). See docs/source/IMAGE_DIRECTOR_AUDIT.md §9 for the V1 architecture. Known gap: V1 does not enforce that edits[].reference_slots values must exist as keys under images (e.g. reference_slots:[\"image3\"] when images.image3 is absent) - expressible with finite image2/image3 conditionals but not worth the complexity here, so the router must check it instead. Routing (task -> branch) is deliberately NOT part of this schema: the router resolves task=generate/edit to a branch deterministically and logs that decision separately, rather than trusting an analyzer-authored route field.",
+  "type": "object",
+  "required": ["schema_version", "task", "user_instruction", "prompt"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "task": {
+      "enum": ["generate", "edit"]
+    },
+    "user_instruction": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Verbatim (or lightly cleaned) user instruction, kept for logging and reproducibility, separate from the model-facing prompt."
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Model-facing prompt text handed to the selected branch (Z-Image Turbo for generate, Qwen Image Edit 2509 for edit)."
+    },
+    "is_local_region": {
+      "type": "boolean",
+      "description": "Required when task=edit. Satisfies the router acceptance criterion of correctly identifying local-region edits. Not a general edit-type taxonomy - just the one distinction V1 acts on."
+    },
+    "images": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["image1"],
+      "properties": {
+        "image1": { "$ref": "#/$defs/imageSlot" },
+        "image2": { "$ref": "#/$defs/imageSlot" },
+        "image3": { "$ref": "#/$defs/imageSlot" }
+      },
+      "description": "Keys are the literal ComfyUI TextEncodeQwenImageEditPlus input slot names (image1/image2/image3), not abstract ids - confirmed against tests/vram/combined-multiref/build_graph.py."
+    },
+    "edits": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edit" }
+    },
+    "preserve": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "description": "Flat list of subjects/regions/attributes the editing branch must not change."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "task": { "const": "generate" } },
+        "required": ["task"]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            { "required": ["is_local_region"] },
+            { "required": ["images"] },
+            { "required": ["edits"] },
+            { "required": ["preserve"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "task": { "const": "edit" } },
+        "required": ["task"]
+      },
+      "then": {
+        "required": ["is_local_region", "images", "edits", "preserve"],
+        "properties": {
+          "images": {
+            "properties": {
+              "image1": {
+                "properties": { "role": { "const": "source" } }
+              }
+            }
+          },
+          "edits": { "minItems": 1 },
+          "preserve": { "minItems": 1 }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "imageSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role"],
+      "properties": {
+        "role": {
+          "enum": [
+            "source",
+            "garment_reference",
+            "material_style_reference",
+            "identity_reference",
+            "object_reference",
+            "pose_reference",
+            "scene_reference",
+            "other_reference"
+          ]
+        }
+      }
+    },
+    "edit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "region", "operation"],
+      "properties": {
+        "subject": { "type": "string", "minLength": 1 },
+        "region": { "type": "string", "minLength": 1 },
+        "operation": {
+          "enum": ["replace", "add", "remove", "adjust", "restyle"]
+        },
+        "reference_slots": {
+          "type": "array",
+          "items": { "enum": ["image2", "image3"] }
+        }
+      }
+    }
+  }
+}

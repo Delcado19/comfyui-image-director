@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "user_instruction": "In the attached image, remove only the blue square.",
+  "prompt": "Remove the blue square while keeping everything else unchanged: red circle and background composition should remain intact.",
+  "is_local_region": true,
+  "images": {
+    "image1": {"role": "source"}
+  }
+  ,"edits": [
+      {"subject": "blue_square", "region": "remove", "operation": "remove"},
+  	{"subject": "red_circle", "region": "keep", "operation": "restyle"},
+  	{"subject": "background", "region": "keep", "operation": "restyle"}
+  ]
+  ,"preserve": [
+    "red_circle",
+    "background"
+  ]
+}

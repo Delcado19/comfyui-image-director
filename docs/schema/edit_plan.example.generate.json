@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0",
+  "task": "generate",
+  "user_instruction": "Create a photorealistic portrait of a woman in a red coat standing in a rainy city street at night.",
+  "prompt": "Photorealistic portrait of a woman in a red coat standing on a rain-slicked city street at night, neon reflections, cinematic lighting, shallow depth of field."
+}

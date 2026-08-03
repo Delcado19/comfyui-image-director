@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://comfyui-image-director.local/schema/edit_plan.grammar.schema.json",
+  "title": "Image Director structured edit plan (grammar-constrained-decoding variant)",
+  "$comment": "Same V1 data contract as edit_plan.schema.json, restructured from if/then conditionals into oneOf of two fully self-contained branches. Reason: llama-cpp-python's JSON-Schema-to-GBNF converter (llama_grammar.py's SchemaConverter.visit, verified by source read) does not support if/then - the top-level object branch matches before allOf is ever reached, so conditional requirements would be silently dropped. oneOf/$ref/const/enum ARE supported by that converter. This file is the grammar-decoding-compatible encoding of the same contract; edit_plan.schema.json remains the canonical human-readable reference. Used by the companion node project comfyui-qwenvl-structured-gguf (probe/edit_plan_schema_probe.py) to validate response_format-constrained decoding against the real schema, not just the trivial one-field probe schema.",
+  "oneOf": [
+    { "$ref": "#/$defs/generatePlan" },
+    { "$ref": "#/$defs/editPlan" }
+  ],
+  "$defs": {
+    "generatePlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "task", "user_instruction", "prompt"],
+      "properties": {
+        "schema_version": { "const": "1.0" },
+        "task": { "const": "generate" },
+        "user_instruction": { "type": "string", "minLength": 1 },
+        "prompt": { "type": "string", "minLength": 1 }
+      }
+    },
+    "editPlan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "task", "user_instruction", "prompt",
+        "is_local_region", "images", "edits", "preserve"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.0" },
+        "task": { "const": "edit" },
+        "user_instruction": { "type": "string", "minLength": 1 },
+        "prompt": { "type": "string", "minLength": 1 },
+        "is_local_region": { "type": "boolean" },
+        "images": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["image1"],
+          "properties": {
+            "image1": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["role"],
+              "properties": { "role": { "const": "source" } }
+            },
+            "image2": { "$ref": "#/$defs/imageSlot" },
+            "image3": { "$ref": "#/$defs/imageSlot" }
+          }
+        },
+        "edits": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/edit" }
+        },
+        "preserve": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "imageSlot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role"],
+      "properties": {
+        "role": {
+          "enum": [
+            "source",
+            "garment_reference",
+            "material_style_reference",
+            "identity_reference",
+            "object_reference",
+            "pose_reference",
+            "scene_reference",
+            "other_reference"
+          ]
+        }
+      }
+    },
+    "edit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subject", "region", "operation"],
+      "properties": {
+        "subject": { "type": "string", "minLength": 1 },
+        "region": { "type": "string", "minLength": 1 },
+        "operation": {
+          "enum": ["replace", "add", "remove", "adjust", "restyle"]
+        },
+        "reference_slots": {
+          "type": "array",
+          "items": { "enum": ["image2", "image3"] }
+        }
+      }
+    }
+  }
+}

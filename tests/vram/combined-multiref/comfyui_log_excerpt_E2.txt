@@ -1,0 +1,22 @@
+[2026-08-01 21:34:16.472] got prompt
+[2026-08-01 21:34:22.654] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 21:34:23.212] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 21:34:23.292] Requested to load QwenImageTEModel_
+[2026-08-01 21:34:23.925] Unloaded partially: 2788.37 MB freed, 6306.11 MB remains loaded, 88.63 MB buffer reserved, lowvram patches: 0
+[2026-08-01 21:34:27.038] loaded completely; 6898.42 MB usable, 6222.63 MB loaded, full load: True
+[2026-08-01 21:34:28.301] [QwenVL] Loading GGUF: Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf (device=cuda, gpu_layers=-1, ctx=8192)
+[2026-08-01 21:34:39.085] llama_context: n_ctx_seq (8192) < n_ctx_train (128000) -- the full capacity of the model will not be utilized
+[2026-08-01 21:34:39.169] load_hparams: Qwen-VL models require at minimum 1024 image tokens to function correctly on grounding tasks
+[2026-08-01 21:34:39.170] load_hparams: if you encounter problems with accuracy, try adding --image-min-tokens 1024
+[2026-08-01 21:34:39.170] load_hparams: more info: https://github.com/ggml-org/llama.cpp/issues/16842
+
+[2026-08-01 21:35:14.893] [QwenVL] Tokens: prompt=180, completion=101, time=35.73s, speed=2.83 tok/s
+[2026-08-01 21:35:16.403] Unloaded partially: 2038.46 MB freed, 4267.64 MB remains loaded, 88.63 MB buffer reserved, lowvram patches: 0
+[2026-08-01 21:35:16.524] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 21:35:16.846] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 21:35:21.256] loaded partially; 12510.31 MB usable, 12495.01 MB loaded, 73.31 MB offloaded, 15.22 MB buffer reserved, lowvram patches: 0
+[2026-08-01 21:36:17.980] 100%|██████████| 8/8 [00:56<00:00,  7.08s/it]100%|██████████| 8/8 [00:56<00:00,  7.08s/it]
+[2026-08-01 21:36:17.990] Requested to load WanVAE
+[2026-08-01 21:36:18.500] Unloaded partially: 3461.46 MB freed, 9033.55 MB remains loaded, 60.89 MB buffer reserved, lowvram patches: 0
+[2026-08-01 21:36:18.529] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 21:36:19.040] Prompt executed in 122.56 seconds

@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "user_instruction": "In image1, replace the blue square with a shape matching the reference shown in image2.",
+  "prompt": "\n\n### Step-by-step instructions:\nReplace the blue square (role: source) from Picture 1 using an object that matches exactly to what is seen as role 'source' and pick best-fitting role for picture-2. Ensure red circle remains unchanged, background stays intact.\n",
+  "is_local_region": true,
+  "images": {
+    "image1": {"role": "source"},
+    "image2": {"role": "object_reference"}
+  },
+  "edits": [
+    {
+      "subject": "blue square in image1 (role: source)",
+      "region": "left",
+      "operation": "replace",
+      "reference_slots": ["image2"]
+    }
+  ],
+  "preserve": [
+    "red circle"
+  ]
+}

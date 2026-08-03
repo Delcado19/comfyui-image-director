@@ -1,0 +1,52 @@
+{"event": "submitted", "prompt_id": "36930bd4-5b17-4e34-940e-083f2d02a5b9", "t": 1785617542.5714185}
+{
+  "event": "finished",
+  "prompt_id": "36930bd4-5b17-4e34-940e-083f2d02a5b9",
+  "wall_time_s": 75.2,
+  "status_completed": true,
+  "status_messages": [
+    [
+      "execution_start",
+      {
+        "prompt_id": "36930bd4-5b17-4e34-940e-083f2d02a5b9",
+        "timestamp": 1785617542627
+      }
+    ],
+    [
+      "execution_cached",
+      {
+        "nodes": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "7",
+          "10",
+          "11",
+          "12"
+        ],
+        "prompt_id": "36930bd4-5b17-4e34-940e-083f2d02a5b9",
+        "timestamp": 1785617542634
+      }
+    ],
+    [
+      "execution_success",
+      {
+        "prompt_id": "36930bd4-5b17-4e34-940e-083f2d02a5b9",
+        "timestamp": 1785617617327
+      }
+    ]
+  ],
+  "output_node_ids": [
+    "15"
+  ],
+  "save_image_files": [
+    {
+      "node_id": "15",
+      "filename": "ImageDirector_TestE2fixed_00001_.png",
+      "path": "E:\\AI_Art\\ImageDirector_TestE2fixed_00001_.png",
+      "size_bytes": 888155
+    }
+  ]
+}

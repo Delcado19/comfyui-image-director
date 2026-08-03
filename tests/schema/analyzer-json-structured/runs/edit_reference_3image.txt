@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "user_instruction": "In image1, replace the blue square with a shape matching the reference in image2, and replace the red circle with a shape matching the reference in image3.",
+  "prompt": "\n\n### images\n- **image1**: source\n- **image2**: \n- **image3**: \n",
+  "is_local_region": true,
+  "images": {
+    "image1": {"role": "source"},
+    "image2": {"role": "object_reference"},
+    "image3": {"role": "object_reference"}
+  },
+  "edits": [
+    {
+      "subject": "blue square",
+      "region": "left",
+      "operation": "replace",
+      "reference_slots": ["image2"]
+    },
+    {
+      "subject": "red circle",
+      "region": "right",
+      "operation": "replace",
+      "reference_slots": ["image3"]
+    }
+  ],
+  "preserve": [
+    "background"
+  ]
+}

@@ -1,0 +1,37 @@
+[2026-08-01 23:12:14.510] got prompt
+[2026-08-01 23:12:14.546] Using pytorch attention in VAE
+[2026-08-01 23:12:14.547] Using pytorch attention in VAE
+[2026-08-01 23:12:14.630] VAE load device: cuda:0, offload device: cpu, dtype: torch.bfloat16
+[2026-08-01 23:12:14.661] Requested to load WanVAE
+[2026-08-01 23:12:14.673] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 23:12:15.566] [QwenVL] Loading GGUF: Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf (device=cuda, gpu_layers=-1, ctx=8192)
+[2026-08-01 23:12:25.889] llama_context: n_ctx_seq (8192) < n_ctx_train (128000) -- the full capacity of the model will not be utilized
+[2026-08-01 23:12:25.907] load_hparams: Qwen-VL models require at minimum 1024 image tokens to function correctly on grounding tasks
+[2026-08-01 23:12:25.907] load_hparams: if you encounter problems with accuracy, try adding --image-min-tokens 1024
+[2026-08-01 23:12:25.907] load_hparams: more info: https://github.com/ggml-org/llama.cpp/issues/16842
+
+[2026-08-01 23:12:34.086] [QwenVL] Tokens: prompt=180, completion=164, time=8.18s, speed=20.04 tok/s
+[2026-08-01 23:12:39.693] gguf qtypes: Q6_K (42), F32 (141), Q4_K (111), Q5_K (25), IQ4_XS (20)
+[2026-08-01 23:12:39.787] Dequantizing token_embd.weight to prevent runtime OOM.
+[2026-08-01 23:12:40.366] Attenpting to find mmproj file for text encoder...
+[2026-08-01 23:12:40.366] Using mmproj 'Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf' for text encoder 'Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf'.
+[2026-08-01 23:12:40.391] gguf qtypes: F32 (291), BF16 (226), F16 (2)
+[2026-08-01 23:12:40.880] CLIP/text encoder model load device: cuda:0, offload device: cpu, current: cpu, dtype: torch.float16
+[2026-08-01 23:12:40.909] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 23:12:41.142] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 23:12:41.237] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 23:12:41.314] Requested to load QwenImageTEModel_
+[2026-08-01 23:12:44.049] loaded completely; 13158.49 MB usable, 6222.63 MB loaded, full load: True
+[2026-08-01 23:12:44.748] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 23:12:44.842] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 23:12:44.928] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 23:12:45.710] gguf qtypes: F32 (1087), BF16 (6), Q5_K (28), Q4_K (580), Q6_K (232)
+[2026-08-01 23:12:45.747] model weight dtype torch.bfloat16, manual cast: None
+[2026-08-01 23:12:45.750] model_type FLUX
+[2026-08-01 23:12:45.804] Requested to load QwenImage
+[2026-08-01 23:12:53.439] loaded partially; 11810.45 MB usable, 11795.16 MB loaded, 773.17 MB offloaded, 15.22 MB buffer reserved, lowvram patches: 0
+[2026-08-01 23:14:15.736] 100%|██████████| 8/8 [01:22<00:00, 10.40s/it]100%|██████████| 8/8 [01:22<00:00, 10.29s/it]
+[2026-08-01 23:14:15.749] Requested to load WanVAE
+[2026-08-01 23:14:16.246] Unloaded partially: 2802.20 MB freed, 8992.96 MB remains loaded, 60.89 MB buffer reserved, lowvram patches: 0
+[2026-08-01 23:14:16.270] Model WanVAE prepared for dynamic VRAM loading. 241MB Staged. 0 patches attached. Force pre-loaded 60 weights: 61 KB.
+[2026-08-01 23:14:16.778] Prompt executed in 122.25 seconds

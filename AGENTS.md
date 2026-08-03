@@ -227,12 +227,49 @@ without an actual controlled runtime test.
 - Do not infer from that smoke test that structured JSON output, edit-plan
   quality, router logic, or image quality are validated; none of those have
   a controlled test yet.
+- For structured edit-plan JSON output specifically, use `QwenVLStructuredGGUF`
+  (external repo `comfyui-qwenvl-structured-gguf`, MIT, junction-installed
+  into `custom_nodes`, not yet Comfy Registry published), not prompt-only
+  `AILab_QwenVL_GGUF_Advanced` — prompt-only structural output was tested
+  and failed 0/3 (`tests/schema/analyzer-json/`, historical/superseded).
+  `QwenVLStructuredGGUF` grammar-constrains output via
+  `response_format`/`llama-cpp-python`, validated 4/4 structurally in this
+  project's own first-party test (`tests/schema/analyzer-json-structured/`).
+  `docs/schema/edit_plan.grammar.schema.json` is the `oneOf`-restructured,
+  grammar-converter-compatible variant of `edit_plan.schema.json` (that
+  converter does not support `if`/`then`) — use it, or an
+  availability-narrowed variant of it, not the canonical `if`/`then` file,
+  when constructing a `response_format.schema` value.
+- Structural JSON reliability being solved does not mean plan/content
+  quality is solved — keep these separate. `is_local_region` has been
+  observed flipped on an otherwise structurally-valid response, and
+  `reference_slots` has been observed referencing an image that was never
+  provided when the schema permitted it (mitigated by using an
+  availability-specific schema per call, not by trusting the model). Do not
+  claim edit-plan quality, routing correctness, or image quality from a
+  structural pass alone.
 - The tested sequential Analyzer -> Editor path depends on
   `keep_model_loaded=false` on the analyzer node (its default is `true`);
   do not assume the tested VRAM-release behavior holds without that setting.
 - Treat the combined Analyzer -> Editor path with two or three reference
-  images in one graph as untested — Test C measured only the
-  one-reference-image case.
+  images as tested and initially found broken, then fixed
+  (`tests/vram/combined-multiref/`, tests E2/E3 and their fixed re-runs):
+  an independent-of-the-analyzer node (the negative-prompt
+  `TextEncodeQwenImageEditPlus`) let ComfyUI's executor schedule the
+  editor's CLIP load before/during the analyzer, causing near-OOM (as low
+  as 27 MiB free). A `StringSubstring(analyzer_output, 0, 0)` node forcing
+  a real dependency edge fixed it — validated with real margin (>=1192 MiB
+  free) for both 2 and 3 references, but only from a clean/idle VRAM
+  baseline reached via ComfyUI's `POST /free` endpoint. A warm baseline
+  (unevicted resident models from a prior run) reintroduced a tight margin
+  even with the fix applied — do not assume the fix alone guarantees
+  headroom without also accounting for prior VRAM residency.
+- More generally: when a graph mixes an analyzer/LLM node with several
+  independent encoder/loader nodes, check whether any of those nodes truly
+  depend on the analyzer's output before assuming ComfyUI will execute
+  them in the intended sequential order — a missing dependency edge is
+  enough to reintroduce VRAM overlap, and this will not show up as a
+  node-level error, only as a tighter VRAM margin.
 
 ## MCP behavior
 
