@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0",
+  "task": "generate",
+  "user_instruction": "Create a photorealistic product photo of a matte black ceramic mug on a walnut desk in morning window light."
+  ,"prompt": "A matte black ceramic mug placed centrally atop a polished, dark brown walnut desk surface with visible grain patterns and natural wood tones. The scene is illuminated by soft, diffused sunlight streaming through an unseen window from the left side, casting gentle shadows across both objects that suggest early morning or late afternoon light conditions."
+}

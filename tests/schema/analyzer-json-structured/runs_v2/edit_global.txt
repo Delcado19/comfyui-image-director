@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "is_local_region": false,
+  "images": {
+    "image1": {
+      "role": "source"
+    }
+  },
+  "edits": [
+    {
+      "subject": "entire image",
+      "region": "full image",
+      "operation": "restyle"
+    }
+  ],
+  "preserve": [
+    "shapes",
+    "layout",
+    "framing"
+  ]
+  ,
+  "user_instruction": "Restyle the attached image as a clean pencil sketch."
+   , "prompt": "Create an image that looks like it was drawn with pencils, maintaining all shapes and layout of the original picture. "
+}

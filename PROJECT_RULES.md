@@ -174,7 +174,15 @@ hold.
 What remains unresolved is the productive Image Director logic, not the
 analyzer loader itself:
 
-- analyzer prompt design and plan quality
+- analyzer prompt design and plan quality. A scoped experiment
+  (`tests/schema/analyzer-json-structured/PROMPT_EXPERIMENT_2026-08-03.md`,
+  not adopted, baseline unchanged) found that simple wording fixes appeared
+  to fix single-edit content problems (edits-vs-preserve confusion, `"*"`
+  placeholders) in paired reruns (not a reliability screen), but multi-edit
+  composition and `user_instruction`/`prompt`/`edits` cross-field
+  consistency were not reliably fixed by prompt wording alone at n=1-2
+  samples per variant - don't re-attempt the same wording-only approach
+  without reading that file first
 - router-side semantic validation, including checking that every
   `reference_slots` value actually names an image key present in that same
   response's `images` object (JSON Schema cannot express this cross-field

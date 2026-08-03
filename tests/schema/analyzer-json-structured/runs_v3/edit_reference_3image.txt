@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "is_local_region": true,
+  "images": {
+    "image1": {"role": "source"},
+    "image2": {"role": "object_reference"},
+    "image3": {"role": "object_reference"}
+  },
+  "edits": [
+    {
+      "subject": "blue square",
+      "region": "full image",
+      "operation": "replace",
+      "reference_slots": ["image2", "image3"]
+    }
+  ],
+  "preserve": [
+    "entire image"
+  ]
+  ,"user_instruction": "In the blue square, replace it with a shape matching reference in picture 2."
+  , "prompt": "Replace the red circle with an object from Picture 3 and keep background unchanged."
+}

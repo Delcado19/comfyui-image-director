@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "is_local_region": true,
+  "images": {
+    "image1": {"role": "source"},
+    "image2": {"role": "object_reference"}
+  },
+  "edits": [
+    {
+      "subject": "blue square in image1",
+      "region": "full region of blue square in image1",
+      "operation": "replace",
+      "reference_slots": ["image2"]
+    }
+  ],
+  "preserve": [
+    "red circle and background"
+  ]
+  ,"user_instruction":"Replace the blue square with a shape matching reference shown."
+  , "prompt":"In picture, replace the blue square in image1 with purple star from image2. Keep red circle unchanged."}

@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "is_local_region": true,
+  "images": {
+    "image1": {
+      "role": "source"
+    }
+  },
+  "edits": [
+    {
+      "subject": "blue square",
+      "region": "full image",
+      "operation": "remove"
+    }
+  ],
+  "preserve": [
+    "red circle",
+    "background color",
+    "composition and layout of the elements in relation to each other"
+  ]
+  ,
+  "user_instruction": "Remove only the blue square."
+   , "prompt": "In this image, remove just the blue square. Keep everything else unchanged."}

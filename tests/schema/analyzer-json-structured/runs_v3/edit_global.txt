@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "is_local_region": false,
+  "images": {
+    "image1": {
+      "role": "source"
+    }
+  },
+  "edits": [
+    {"subject": "entire image", "region": "full image", "operation": "restyle"},
+    {"subject": "entire image", "region": "full image", "operation": "add"}
+  ],
+  "preserve": ["shapes"],
+  "user_instruction": "Restyle the attached image as a clean pencil sketch."
+  ,"prompt": "Create a clean pencil sketch of this image, maintaining its shapes and layout. "
+}
