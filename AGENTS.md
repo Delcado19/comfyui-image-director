@@ -223,10 +223,28 @@ without an actual controlled runtime test.
   explicitly concerns it.
 - Treat the Qwen2.5-VL-7B GGUF analyzer path (`AILab_QwenVL_GGUF_Advanced`)
   as loader- and runtime-smoke-tested (`docs/source/IMAGE_DIRECTOR_AUDIT.md`
-  §13, Test A and Test C) — not merely inventory-present.
-- Do not infer from that smoke test that structured JSON output, edit-plan
-  quality, router logic, or image quality are validated; none of those have
-  a controlled test yet.
+  §13, Test A and Test C) — not merely inventory-present. **The underlying
+  text-encoder weights changed 2026-08-03** (swapped to an
+  abliterated/uncensored GGUF, `Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf`,
+  see `PROJECT_RULES.md`'s "Current architecture status") and Qwen Image
+  Edit 2509 was replaced by 2511 the same day (full swap, not an A/B) - both
+  changes were independently runtime-smoke-tested afterward and succeeded
+  (analyzer correctly described the standard shapes test image; the new
+  UNet+CLIP pair correctly executed a real edit, blue-square removal,
+  verified visually). Test A/C's/E2/E3's *specific VRAM margin numbers*
+  still predate these swaps and have not been re-measured with the new file
+  sizes - don't assume those exact numbers hold, even though basic
+  loading/inference is now confirmed working.
+- File paths hardcoded in this project's own test scripts
+  (`tests/vram/combined-multiref/`, `tests/schema/analyzer-json*/`) and the
+  sibling `comfyui-qwenvl-structured-gguf` repo's probes are stale after
+  the 2026-08-03 model swaps and will fail if re-run without updating
+  `MODEL_PATH`/`MMPROJ_PATH` first - do not treat their historic outputs as
+  reproducible with the current install, only as a historical record.
+- Do not infer structured JSON output, plan quality, router logic, or image
+  quality from Test A/C alone. Structured JSON *shape* has its own separate,
+  passing tests (see below) - plan/content quality, router logic, and image
+  quality remain separately unresolved, not covered by any test yet.
 - For structured edit-plan JSON output specifically, use `QwenVLStructuredGGUF`
   (external repo `comfyui-qwenvl-structured-gguf`, MIT, junction-installed
   into `custom_nodes`, not yet Comfy Registry published), not prompt-only

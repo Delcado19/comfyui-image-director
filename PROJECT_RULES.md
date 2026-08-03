@@ -132,8 +132,34 @@ The intended minimal architecture is:
 Current candidate execution branches:
 
 - Generation: Z-Image Turbo
-- Image editing: Qwen Image Edit 2509
-- Qwen Image Edit 2511: future A/B candidate
+- Image editing: Qwen Image Edit 2511 (replaced Qwen Image Edit 2509,
+  2026-08-03, user's explicit decision - not an A/B, a full swap). UNet
+  `models\unet\Qwen Image Edit 2511\qwen-image-edit-2511-Q4_K_M.gguf`
+  downloaded from `unsloth/Qwen-Image-Edit-2511-GGUF` on HuggingFace
+  (Apache-2.0, built for `ComfyUI-GGUF` by city96 - the loader already
+  installed and used for 2509), byte-size-verified against HuggingFace's
+  reported Content-Length (13,244,758,624 bytes) and GGUF-magic-verified.
+  **Runtime-smoke-tested 2026-08-03, succeeded**: standalone editor graph
+  (`UnetLoaderGGUF` 2511 + `CLIPLoaderGGUF` on the new abliterated encoder,
+  see below + existing `qwen_image_vae.safetensors`, `FluxKontextImageScale`
+  -> `CFGNorm` -> `ModelSamplingAuraFlow` -> `TextEncodeQwenImageEditPlus`
+  x2 -> `KSampler` -> `VAEDecode` -> `SaveImage`, one reference image,
+  instruction "remove the blue square, keep everything else unchanged")
+  completed with `execution_success`, and the output image was visually
+  inspected (not pixel/mask-diffed): the blue square appeared correctly
+  removed while the red circle and background appeared preserved. Not yet
+  re-run through the full Test C analyzer+editor combined path or the
+  E2/E3 multi-reference VRAM tests - only this standalone single-reference
+  editor smoke test is confirmed. The old 2509 UNet
+  (`Qwen-Image-Edit-2509-Q4_K_M.gguf`) was deleted; its `.metadata.json`/
+  `.jpeg` were kept for provenance. Production workflows that hardcoded the
+  old UNet filename (`Qwen Image Edit - VTON v13/v14/v15.json`,
+  `QWEN_IMAGE_EDIT_WORKFLOW.json`) will fail to load it until their
+  `UnetLoaderGGUF` widget value is manually updated to
+  `Qwen Image Edit 2511\qwen-image-edit-2511-Q4_K_M.gguf` (and their
+  `CLIPLoaderGGUF` value to the new encoder path below) - the user opted to
+  do this themselves when next touching those workflows, not as part of
+  this change.
 - FLUX.2: outside the Version-1 critical path until separately measured.
   Informal candidate note (2026-08-03): user-supplied chat images from a
   single uncontrolled img2img run reportedly using an existing production
@@ -165,6 +191,71 @@ Analyzer-only Test A and the sequential Analyzer -> Editor Test C (one
 graph, one queue press, one reference image) both succeeded. Do not
 describe Test A or Test C as blocked.
 
+**Text encoder swapped 2026-08-03 - Test A/C's smoke-test evidence no
+longer reflects the currently installed weights.** The shared Qwen2.5-VL-7B
+GGUF pair (used by both the analyzer and Qwen Image Edit's own CLIP) was
+replaced with an uncensored/"abliterated" variant, user's explicit request:
+`Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf` +
+`Qwen2.5-VL-7B-Instruct-abliterated.mmproj-f16.gguf`, from
+`mradermacher/Qwen2.5-VL-7B-Instruct-abliterated-GGUF` on HuggingFace (a
+GGUF quantization of `huihui-ai/Qwen2.5-VL-7B-Instruct-abliterated`),
+byte-size- and GGUF-magic-verified. `Q4_K_M` chosen over the previously
+installed `Q4_K_S` (a step up in quality) per the user's explicit request;
+a further step to `Q5_K_S` was discussed as a fallback if `Q4_K_M` turns
+out insufficient, not yet needed. The old, non-abliterated pair
+(`Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf` + `-mmproj-BF16.gguf`) was deleted
+at both hardlink locations (`text_encoders\Qwen Image Edit 2509\` and the
+analyzer's `llm\GGUF\Qwen\Qwen2.5-VL-7B-Instruct-GGUF\` catalog target).
+The `gguf_models.json` catalog entry was renamed/repointed to
+`Qwen2.5-VL-7B-Instruct-abliterated-GGUF` (author `huihui-ai`), hardlinked
+into `llm\GGUF\huihui-ai\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\`. The new
+`CLIPLoaderGGUF` widget value for any workflow (production or test) is
+`Qwen2.5-VL-7B-abliterated\Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf`
+(type `qwen_image`); the mmproj file lives alongside it in the same folder
+as `Qwen2.5-VL-7B-Instruct-abliterated.mmproj-f16.gguf` (not separately
+selected in `CLIPLoaderGGUF` - `AILab_QwenVL_GGUF_Advanced` picks up the
+mmproj via the `gguf_models.json` catalog entry, not a workflow widget).
+
+**Open, not evaluated: refusal/content-moderation behavior changed.**
+Abliteration specifically targets refusal behavior - the analyzer may now
+describe or the editor may now condition on content the previous model
+would have declined. This was not evaluated today; the smoke tests only
+checked that vision/edit *capability* still works, not what content
+boundaries changed. Do not infer anything about plan quality, safety
+behavior, or output appropriateness from these smoke tests - track this as
+a genuinely new, separate variable if it becomes relevant later.
+
+**Runtime-smoke-tested 2026-08-03, succeeded, both roles:** as the
+standalone analyzer (`AILab_QwenVL_GGUF_Advanced`, model_name
+`Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf`, one reference image, the
+same red-circle/blue-square synthetic test image used throughout this
+project's testing) correctly described "a red circle and blue square on a
+light gray background" - vision capability intact after
+abliteration+quantization. As Qwen Image Edit 2511's own CLIP (see the UNet
+entry above) - correctly conditioned a real edit (removed the blue square,
+preserved the rest). Do not assume Test A/C's or E2/E3's *structural VRAM
+margin numbers* transfer without re-running those specific tests (file
+sizes changed: new UNet ~13.24GB vs old ~13.07GB, new CLIP ~4.36GB vs old
+~4.46GB - close but not identical, and the tight ~1.2-1.3GiB VRAM margin
+found in the fixed E2/E3 multi-reference tests has not been re-measured
+with these files). Same VRAM-release caveat applies
+(`keep_model_loaded=false`). Production workflows that hardcoded the old
+CLIP filename (`Qwen Image Edit - VTON v10-v15.json`,
+`QWEN_IMAGE_EDIT_WORKFLOW.json`) will fail to load it until their
+`CLIPLoaderGGUF` widget value is manually updated - the user opted to do
+this themselves when next touching those workflows.
+
+**Test script paths are now stale.** Every `MODEL_PATH`/`MMPROJ_PATH`
+constant in this project's own test scripts
+(`tests/vram/combined-multiref/`, `tests/schema/analyzer-json/`,
+`tests/schema/analyzer-json-structured/`) and the sibling
+`comfyui-qwenvl-structured-gguf` repo's probes still point at the deleted
+`Qwen Image Edit 2509\...`/`Qwen2.5-VL-7B-Instruct-GGUF\...` files. Historic
+run outputs under those directories remain valid records of what was true
+when they ran - do not edit them. Re-running any of those scripts as-is
+will fail (file not found) until their path constants are updated to the
+new UNet/CLIP locations.
+
 VRAM was released back to idle after the analyzer step only because
 `keep_model_loaded=false` was set explicitly on the analyzer node; its
 default is `true`. Any reusable Image Director workflow must set
@@ -188,11 +279,14 @@ analyzer loader itself:
   response's `images` object (JSON Schema cannot express this cross-field
   constraint by itself - see the "Structured JSON edit-plan output" section
   below)
-- availability-specific schema selection/generation as actual router logic
-  (the first-party test, `tests/schema/analyzer-json-structured/`, narrows
-  the `response_format` schema per case by hand in `build_graph.py`; a real
-  router still needs to build the right schema variant at runtime from
-  however many reference images were actually supplied)
+- availability-specific schema selection/generation as actual router logic.
+  The generation/validation logic itself is now a reusable library
+  (`image_director/edit_plan_schema.py`'s `edit_plan_schema()`/
+  `validate_edit_plan()`, extracted from the first-party test's
+  by-hand-per-case schemas and byte-verified equivalent), including
+  caller-side and response-side checks that `images.image1` is present.
+  What's still missing: nothing calls `edit_plan_schema()` at runtime from
+  actual node inputs yet - that's the router's job, not done
 - the task router
 - visual acceptance tests (identity preservation, edit locality, instruction
   compliance) on real photos
