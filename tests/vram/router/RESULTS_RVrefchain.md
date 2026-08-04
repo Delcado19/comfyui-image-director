@@ -1,5 +1,18 @@
 # Back-to-back router requests with multi-reference edit, no `/free` — result
 
+**Update (run 2, same session):** repeated with fresh seeds
+(`RVrefchain2_generate.graph.json`/`RVrefchain2_edit.graph.json`, log
+`vram_log_RVrefchain2.csv`). Result: **463 MiB free** at the worst sampled
+point - notably roomier than run 1's 196 MiB, never dropped under 400 MiB
+at all. Both runs completed without error, full-load confirmed both times.
+n=2: {196, 463} MiB free - confirms real run-to-run variance in this exact
+scenario (consistent with this project's already-documented allocator/
+driver-level drift), not that 196 MiB was a one-off measurement error.
+Neither number is a stable "the" margin; 196 MiB remains the worst
+*observed* case and the reason the mandatory rule stays in force - a
+scenario that can produce 196 MiB on one run and 463 MiB on the next is
+not one to call safe without `/free`, precisely because of that spread.
+
 Extends `RESULTS_RVfix.md`'s back-to-back-without-`/free` characterization
 (single-image edit) to the multi-reference case now that
 `tests/router/build_router_graph.py` supports it
@@ -63,17 +76,18 @@ opposite of what the isolated numbers alone would suggest.
 
 ## What this does not settle / open concern
 
-- n=1 - not repeated. Given how much tighter this came in than the
-  single-image back-to-back case, a repeat run (ideally with 1 reference
-  too, to interpolate) would meaningfully strengthen this finding before
-  treating "196 MiB" as a stable number rather than a worst-case-so-far
-  data point.
+- n=2 now (196, 463 MiB free) - confirms real spread, not a repeat-run
+  guarantee of "always tight" or "always fine." A repeat run with 1
+  reference (to interpolate between the single-image and 2-reference
+  cases) would still strengthen this further, not done here.
 - Root cause of *why* multi-reference back-to-back costs more margin than
-  single-image back-to-back is not investigated - candidates include the
-  extra `VAEEncode`/`TextEncodeQwenImageEditPlus` work for 2 additional
-  images adding to peak transient memory during the same tight window, but
-  this is not confirmed against the log/CSV at a finer granularity than
-  done here.
+  single-image back-to-back, and why run 1 vs run 2 differ so much from
+  each other, is not investigated - candidates include the extra
+  `VAEEncode`/`TextEncodeQwenImageEditPlus` work for 2 additional images
+  adding to peak transient memory during the same tight window, or the
+  same allocator/driver-level variance already flagged in
+  `RESULTS_RVfix.md`'s unexplained ~500 MiB gap - not confirmed against
+  the log/CSV at a finer granularity than done here.
 - No mitigation attempted (same position as `RESULTS_RVfix.md`'s
   single-image finding) - the accepted mitigation remains calling `/free`
   between requests in production, now with stronger evidence that skipping

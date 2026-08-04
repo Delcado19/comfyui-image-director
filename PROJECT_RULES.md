@@ -288,8 +288,8 @@ analyzer loader itself:
 - the task router's routing *mechanism* is now built and smoke-tested (see
   "V1 task router" section below) - what's still missing: a repeat-seed
   reliability pass (the multi-reference back-to-back VRAM margin is now
-  measured once at 196 MiB free - see the mandatory safety rules below -
-  but not repeated), and any plan/content-quality guarantee
+  measured twice, 196/463 MiB free - see the mandatory safety rules below),
+  and any plan/content-quality guarantee
 - visual acceptance tests (identity preservation, edit locality, instruction
   compliance) on real photos
 
@@ -526,10 +526,12 @@ availability-specific schema selection gap below. Cold-floor VRAM pass:
 RVref2 (1 reference) 532 MiB free, RVref3 (2 references) 916 MiB free -
 both pass the 300 MiB floor, both n=1. Lazy-switch correctness
 (unused branch never loads) confirmed to hold with references present.
-Back-to-back-without-`/free` sequencing measured once for the 2-reference
-case (`RESULTS_RVrefchain.md`): only **196 MiB free**, the tightest margin
-recorded in this project - see the mandatory safety rules below. Do not
-treat the isolated 916 MiB figure above as representative of production
+Back-to-back-without-`/free` sequencing measured twice for the 2-reference
+case (`RESULTS_RVrefchain.md`): **196 MiB free (run 1), 463 MiB free
+(run 2)** - 196 MiB is the tightest margin recorded in this project, and
+the spread between the two runs is itself evidence this scenario isn't
+safe to call stable - see the mandatory safety rules below. Do not treat
+the isolated 916 MiB figure above as representative of production
 back-to-back usage.
 
 **Not settled by this milestone:**
@@ -574,12 +576,12 @@ back-to-back usage.
   rule stays in force until that margin has a mitigation or a
   wider-margin repeated-use test passes. **This is especially strict for
   multi-reference edit routing:** `tests/vram/router/RESULTS_RVrefchain.md`
-  measured a 2-reference generate -> edit sequence at only **196 MiB
-  free** (n=1), sustained for ~27.5s under 400 MiB during the edit
-  branch's own full-load/`KSampler` phase - the tightest margin recorded
-  in this project. Worst observed so far, not proof multi-reference is
-  always higher risk than single-image (n=1) - but stronger evidence for
-  this same rule, not weaker.
+  measured a 2-reference generate -> edit sequence twice - **196 MiB free
+  (run 1), 463 MiB free (run 2)** - the worse of which is the tightest
+  margin recorded in this project, sustained for ~27.5s under 400 MiB
+  during the edit branch's own full-load/`KSampler` phase. The spread
+  between the two runs is itself part of the evidence: this scenario is
+  not stable enough to call safe without `/free`.
 - Do not modify ComfyUI files unless the current user-approved task requires it.
 - Do not install or download models, nodes or dependencies without explicit
   user approval.

@@ -325,11 +325,14 @@ without an actual controlled runtime test.
   possible future direction, explicitly not attempted this pass.
   **Multi-reference makes this worse, not better:** a 2-reference
   generate -> edit back-to-back sequence (`RESULTS_RVrefchain.md`)
-  measured only **196 MiB free** (n=1) - the tightest margin recorded in
-  this project - despite the isolated multi-reference margin (916 MiB)
-  being roomier than the isolated single-image margin (456 MiB). The
-  back-to-back sequencing cost is larger for multi-reference than for
-  single-image, opposite of what the isolated numbers alone predict.
+  measured **196 MiB free (run 1), 463 MiB free (run 2)** - the worse of
+  which is the tightest margin recorded in this project - despite the
+  isolated multi-reference margin (916 MiB) being roomier than the
+  isolated single-image margin (456 MiB). The back-to-back sequencing cost
+  is larger for multi-reference than for single-image, opposite of what
+  the isolated numbers alone predict; the spread between the two runs
+  (196 vs. 463) is itself evidence this scenario isn't stable enough to
+  call safe without `/free`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
@@ -340,9 +343,9 @@ without an actual controlled runtime test.
   (1 reference) 532 MiB free, RVref3 (2 references) 916 MiB free, both
   n=1, both pass the 300 MiB floor. Lazy-switch correctness (unused branch
   never loads) confirmed to hold with references present. Back-to-back-
-  without-`/free` sequencing measured once (196 MiB free, see the hard
-  rule above) - do not treat the isolated 916 MiB figure as representative
-  of production back-to-back usage.
+  without-`/free` sequencing measured twice (196/463 MiB free, see the
+  hard rule above) - do not treat the isolated 916 MiB figure as
+  representative of production back-to-back usage.
 - The tested sequential Analyzer -> Editor path depends on
   `keep_model_loaded=false` on the analyzer node (its default is `true`);
   do not assume the tested VRAM-release behavior holds without that setting.
