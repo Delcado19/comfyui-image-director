@@ -18,10 +18,16 @@ an OUTPUT_NODE=True node (no branch-local SaveImage/PreviewImage) - that
 would force the branch to execute as an execution root regardless of the
 switch. Exactly one SaveImage after the merge.
 
-Scoped to single-image input only (matches Test C's validated 1-reference
-shape) - NOT yet the multi-reference (image2/image3) case; availability-
-specific schema selection at the router level is a separate, still-open
-item (see PROJECT_RULES.md).
+Supports 0-2 reference images beyond the mandatory source (image1), via
+`build(..., refs=[...])`. Availability-specific schema selection: the
+schema's `reference_count` is picked from `len(refs)` at graph-build time,
+matching the wiring pattern proven in
+`tests/vram/combined-multiref/build_graph.py` (E2/E3, non-router path) -
+extra LoadImage nodes, added as `image2`/`image3` to both the analyzer's
+inputs and both `TextEncodeQwenImageEditPlus` nodes (pos + neg) in the
+edit branch. VRAM-measured (cold-floor, n=1 per reference count) for
+`refs` != []; see `tests/vram/router/RESULTS_RVref.md` - not yet measured
+under back-to-back-without-`/free` sequencing.
 
 Scheduling note: unlike the old prompt-only analyzer path, this router does
 NOT need the E2/E3 StringSubstring dependency-injection fix for the
@@ -39,50 +45,64 @@ import sys
 MODEL_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\huihui-ai\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf"
 MMPROJ_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\huihui-ai\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\Qwen2.5-VL-7B-Instruct-abliterated.mmproj-f16.gguf"
 
-GUIDANCE = """You are creating a structured plan for an image generation/editing pipeline. schema_version is always "1.0". If this is a text-to-image request unrelated to the attached image, use task="generate" - ignore the attached image entirely in that case. If the request modifies the attached image, use task="edit": set is_local_region to true only if just one specific subject/region should change and everything else must stay the same (false if the whole image is being transformed/restyled), list "images" with only image1 (role "source"), describe the needed edit(s), and list what must be preserved. For edits[]: only list things that actually change; use subject "entire image"/region "full image" only when no more specific subject exists; the prompt field must be one clean instruction for an image model, no markdown or commentary.
+GUIDANCE = """You are creating a structured plan for an image generation/editing pipeline. schema_version is always "1.0". If this is a text-to-image request unrelated to the attached image(s), use task="generate" - ignore the attached image(s) entirely in that case. If the request modifies the attached image, use task="edit": set is_local_region to true only if just one specific subject/region should change and everything else must stay the same (false if the whole image is being transformed/restyled), list "images" with image1 (role "source"){reference_note}, describe the needed edit(s), and list what must be preserved. For edits[]: only list things that actually change; use subject "entire image"/region "full image" only when no more specific subject exists; the prompt field must be one clean instruction for an image model, no markdown or commentary.
 
 Instruction: {instruction}"""
 
+REFERENCE_NOTE_BY_COUNT = {
+    0: "",
+    1: " plus image2 (a reference image - give it a role and use reference_slots on any edits[] entry that draws on it)",
+    2: " plus image2 and image3 (reference images - give each a role and use reference_slots on any edits[] entry that draws on them)",
+}
 
-def edit_plan_schema_single_image():
+
+def edit_plan_schema_for(reference_count: int):
     sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director")
     from image_director.edit_plan_schema import edit_plan_schema
-    return edit_plan_schema(source_image=True, reference_count=0)
+    return edit_plan_schema(source_image=True, reference_count=reference_count)
 
 
-def build(instruction: str, seed: int, analyzer_seed: int) -> dict:
-    prompt_text = GUIDANCE.format(instruction=instruction)
-    schema = edit_plan_schema_single_image()
+def build(instruction: str, seed: int, analyzer_seed: int, refs: list[str] | None = None) -> dict:
+    refs = refs or []
+    assert 0 <= len(refs) <= 2, "router supports 0-2 reference images (image2, image3)"
+
+    prompt_text = GUIDANCE.format(instruction=instruction, reference_note=REFERENCE_NOTE_BY_COUNT[len(refs)])
+    schema = edit_plan_schema_for(len(refs))
 
     graph = {
         # Source image, always loaded (cheap - see RESULTS_lazy_switch.md,
         # LoadImage alone leaves no observable execution-cost trace, no
         # need to gate it behind laziness).
         "src": {"class_type": "LoadImage", "inputs": {"image": "imgdir_jsontest_shapes.png"}},
+    }
+    for i, ref_file in enumerate(refs, start=2):
+        graph[f"ref{i}"] = {"class_type": "LoadImage", "inputs": {"image": ref_file}}
 
+    analyzer_inputs = {
+        "model_path": MODEL_PATH,
+        "mmproj_path": MMPROJ_PATH,
+        "prompt": prompt_text,
+        "json_schema": json.dumps(schema),
+        "max_tokens": 512,
+        "temperature": 0.1,
+        "top_p": 0.9,
+        "repetition_penalty": 1.2,
+        "seed": analyzer_seed,
+        "ctx": 8192,
+        "gpu_layers": -1,
+        "keep_model_loaded": False,
+        # Router-only: back-to-back requests without /free were measured
+        # to hit 901 MiB free VRAM here (RESULTS_RVchain.md) because this
+        # node's llama.cpp load is invisible to comfy.model_management.
+        "free_vram_before_load": True,
+        "image": ["src", 0],
+    }
+    for i, _ in enumerate(refs, start=2):
+        analyzer_inputs[f"image{i}"] = [f"ref{i}", 0]
+
+    graph.update({
         # Analyzer -> structured JSON -> task/prompt extraction.
-        "analyzer": {
-            "class_type": "QwenVLStructuredGGUF",
-            "inputs": {
-                "model_path": MODEL_PATH,
-                "mmproj_path": MMPROJ_PATH,
-                "prompt": prompt_text,
-                "json_schema": json.dumps(schema),
-                "max_tokens": 512,
-                "temperature": 0.1,
-                "top_p": 0.9,
-                "repetition_penalty": 1.2,
-                "seed": analyzer_seed,
-                "ctx": 8192,
-                "gpu_layers": -1,
-                "keep_model_loaded": False,
-                # Router-only: back-to-back requests without /free were measured
-                # to hit 901 MiB free VRAM here (RESULTS_RVchain.md) because this
-                # node's llama.cpp load is invisible to comfy.model_management.
-                "free_vram_before_load": True,
-                "image": ["src", 0],
-            },
-        },
+        "analyzer": {"class_type": "QwenVLStructuredGGUF", "inputs": analyzer_inputs},
         "plan_json": {"class_type": "LoadJsonFromText", "inputs": {"data": ["analyzer", 0]}},
         "task_str": {"class_type": "GetTextFromJson", "inputs": {"json": ["plan_json", 0], "key": "task"}},
         "edit_prompt_str": {"class_type": "GetTextFromJson", "inputs": {"json": ["plan_json", 0], "key": "prompt"}},
@@ -154,7 +174,12 @@ def build(instruction: str, seed: int, analyzer_seed: int) -> dict:
         # Merge - single switch, single output.
         "switch": {"class_type": "easy ifElse", "inputs": {"boolean": ["is_edit", 0], "on_true": ["edit_image", 0], "on_false": ["gen_image", 0]}},
         "save": {"class_type": "SaveImage", "inputs": {"images": ["switch", 0], "filename_prefix": "ImageDirector_router"}},
-    }
+    })
+
+    for i, _ in enumerate(refs, start=2):
+        graph["edit_cond_pos"]["inputs"][f"image{i}"] = [f"ref{i}", 0]
+        graph["edit_cond_neg"]["inputs"][f"image{i}"] = [f"ref{i}", 0]
+
     return {"prompt": graph}
 
 
@@ -162,4 +187,5 @@ if __name__ == "__main__":
     instruction = sys.argv[1]
     seed = int(sys.argv[2])
     analyzer_seed = int(sys.argv[3])
-    print(json.dumps(build(instruction, seed, analyzer_seed), ensure_ascii=False))
+    refs = sys.argv[4:]
+    print(json.dumps(build(instruction, seed, analyzer_seed, refs=refs), ensure_ascii=False))

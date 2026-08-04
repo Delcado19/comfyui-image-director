@@ -67,10 +67,11 @@ back-to-back generate/analyzer/free/load, fragmentation, or small residual
 residency could all contribute. Regardless of contributor, the production
 rule stays simple: no back-to-back router usage without `/free` until this
 edit-branch margin has a mitigation or wider-margin repeated test."
-Suggested (not yet run) isolation test: fresh `/free` -> RVfix-edit only
-(no preceding generate request), repeated once, to separate "requires the
-prior generate run" from "this is now just the edit branch's own steady
-footprint regardless of what ran before it."
+Suggested isolation test: fresh `/free` -> RVfix-edit only (no preceding
+generate request), to separate "requires the prior generate run" from
+"this is now just the edit branch's own steady footprint regardless of
+what ran before it." Run later the same session - see the "Isolation
+test" section below.
 
 ## What this settles
 
@@ -107,6 +108,19 @@ as ordinary seed variance and is an open question in its own right -
 "clean edit baseline." Possible causes not distinguished by this test:
 prompt/seed content, allocator/session state drift, code/graph changes
 made since that measurement, or driver/runtime drift.
+
+Follow-up check: ruled out graph/config drift as the cause. `git log
+--follow -- tests/router/build_router_graph.py` shows only two commits
+ever touched it - the original build and this session's
+`free_vram_before_load=True` addition (which only affects the analyzer's
+own load, not the edit branch's diffusion resources). `RV_edit.graph.json`
+and `RViso_edit.graph.json` use the identical instruction text and
+identical `edit_sample` KSampler params (`steps=8, cfg=2.5,
+sampler_name=euler, scheduler=simple, denoise=1.0`) - only the seeds
+differ. So the gap is not explained by a code, schema, or sampler-config
+change between the two measurements; the remaining candidates are
+allocator/session state drift or driver/runtime-level variance, neither
+investigated further here.
 
 ## What this does not settle / open concern
 

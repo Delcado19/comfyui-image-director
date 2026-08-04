@@ -277,11 +277,11 @@ without an actual controlled runtime test.
   Qwen Image Edit 2511 (edit), confirmed via log analysis (only the selected
   branch's components loaded) and visual inspection of the output (matched
   the instruction) in both directions, n=1 per direction. Scoped to the
-  single-source-image case only - multi-reference routing and
-  availability-specific schema selection are still not implemented. Do not
-  claim reliability beyond n=1 or plan/content quality from this test;
-  those remain separately unresolved as documented elsewhere in this file
-  and in `PROJECT_RULES.md`.
+  single-source-image case at the time of this test - multi-reference
+  routing has since been implemented (see below). Do not claim reliability
+  beyond n=1 or plan/content quality from this test; those remain
+  separately unresolved as documented elsewhere in this file and in
+  `PROJECT_RULES.md`.
 - VRAM margins for the router graph itself ARE now measured
   (`tests/vram/router/RESULTS_RV.md`) - both directions show the same
   clean analyzer-peak/trough/branch-peak shape as the non-router path, no
@@ -289,10 +289,11 @@ without an actual controlled runtime test.
   MiB free, single brief spike). **Qwen Image Edit 2511 (edit) is tight:
   954 MiB free, sustained ~37s** - passes this project's 300 MiB threshold
   but is the tightest margin recorded for any passing VRAM test here, per
-  Codex review "now the real binding constraint." Do not extrapolate this
-  as safe for multi-reference (`image2`/`image3`) routing once that's
-  built - it needs its own dedicated VRAM pass. Also: neither branch's
-  models unload after a run completes (both stay GPU-resident).
+  Codex review "now the real binding constraint." At the time of this test
+  multi-reference (`image2`/`image3`) routing had not been built; it has
+  since passed its own cold-floor VRAM pass (see the multi-reference bullet
+  below) but not a back-to-back-without-`/free` pass. Also: neither
+  branch's models unload after a run completes (both stay GPU-resident).
 - **Analyzer-load gap fixed:** `QwenVLStructuredGGUF` (external repo
   `comfyui-qwenvl-structured-gguf/nodes/structured_gguf_vl.py`) got an
   opt-in `free_vram_before_load: BOOLEAN` (default `False`) that calls
@@ -316,8 +317,25 @@ without an actual controlled runtime test.
   errors/OOM. Root cause not isolated (could be `QwenImage`'s own
   footprint, allocator state after the back-to-back sequence, or residual
   effects of the analyzer's own eviction call - Codex was explicit this
-  isn't proven independent of the fix). No fix proposed for this second
-  finding yet.
+  isn't proven independent of the fix). No code fix proposed for this
+  second finding - accepted mitigation is the same `/free`-between-
+  requests rule; an isolated (no preceding request) edit-only run still
+  only measured 456 MiB free, so even a cold edit branch has limited
+  margin on this 16 GB card. A lowvram/`--reserve-vram` experiment is a
+  possible future direction, explicitly not attempted this pass.
+- **Multi-reference routing implemented and VRAM-passed**
+  (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
+  `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
+  the analyzer's `image2`/`image3` inputs, the schema's `reference_count`
+  (via `image_director/edit_plan_schema.py`), and both
+  `TextEncodeQwenImageEditPlus` nodes in the edit branch - same pattern as
+  the non-router `combined-multiref` E2/E3 tests. Cold-floor VRAM: RVref2
+  (1 reference) 532 MiB free, RVref3 (2 references) 916 MiB free, both
+  n=1, both pass the 300 MiB floor. Lazy-switch correctness (unused branch
+  never loads) confirmed to hold with references present. NOT measured
+  under back-to-back-without-`/free` sequencing - given the single-image
+  case tightened significantly under that sequencing, do not assume these
+  margins hold under repeated production usage without `/free`.
 - The tested sequential Analyzer -> Editor path depends on
   `keep_model_loaded=false` on the analyzer node (its default is `true`);
   do not assume the tested VRAM-release behavior holds without that setting.

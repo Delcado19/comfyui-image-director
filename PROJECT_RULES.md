@@ -279,18 +279,16 @@ analyzer loader itself:
   response's `images` object (JSON Schema cannot express this cross-field
   constraint by itself - see the "Structured JSON edit-plan output" section
   below)
-- availability-specific schema selection/generation as actual router logic.
-  The generation/validation logic itself is now a reusable library
-  (`image_director/edit_plan_schema.py`'s `edit_plan_schema()`/
-  `validate_edit_plan()`, extracted from the first-party test's
-  by-hand-per-case schemas and byte-verified equivalent), including
-  caller-side and response-side checks that `images.image1` is present.
-  What's still missing: nothing calls `edit_plan_schema()` at runtime from
-  actual node inputs yet - that's the router's job, not done
+- availability-specific schema selection/generation as actual router logic
+  - DONE. `tests/router/build_router_graph.py`'s `build()` now calls
+  `image_director/edit_plan_schema.py`'s `edit_plan_schema()` with
+  `reference_count=len(refs)` picked from the images actually supplied at
+  graph-build time; see the "Multi-reference routing implemented" note
+  above and `tests/vram/router/RESULTS_RVref.md`.
 - the task router's routing *mechanism* is now built and smoke-tested (see
-  "V1 task router" section below) - what's still missing: availability-
-  specific schema selection (only the 1-source-image case is wired), a
-  repeat-seed reliability pass, and any plan/content-quality guarantee
+  "V1 task router" section below) - what's still missing: a repeat-seed
+  reliability pass, back-to-back-without-`/free` VRAM measurement for the
+  multi-reference case, and any plan/content-quality guarantee
 - visual acceptance tests (identity preservation, edit locality, instruction
   compliance) on real photos
 
@@ -457,11 +455,13 @@ reference* margins (1192/1303 MiB free) despite being only 1 reference
 image here - most likely the current 2511 + abliterated-encoder pair
 having a larger combined footprint than E2/E3's older 2509 + standard-
 encoder pair (exact contributor not isolated). Per Codex review: **this is
-now the real binding constraint** - do not treat multi-reference edit
-routing as safe from this result; it needs its own dedicated VRAM pass
-before being called safe. Also newly observed: neither branch's models are
-released after the run completes (both settle to a resident plateau, not
-back to idle).
+now the real binding constraint** - at the time of this test, multi-
+reference edit routing had not been measured; it has since passed its own
+cold-floor VRAM pass (see "Multi-reference routing implemented" above and
+`tests/vram/router/RESULTS_RVref.md`) but NOT a back-to-back-without-
+`/free` pass, so do not extrapolate safety there yet. Also newly observed:
+neither branch's models are released after the run completes (both settle
+to a resident plateau, not back to idle).
 
 **Back-to-back requests without `/free`, characterized and found unsafe as
 a default policy (`tests/vram/router/RESULTS_RVchain.md`):** running
@@ -516,22 +516,37 @@ flags a separate, unexplained ~500 MiB gap between this isolated result
 MiB) - that older figure should no longer be treated as a stable
 baseline. See `tests/vram/router/RESULTS_RVfix.md` for full detail.
 
-**Not settled by this milestone:**
+**Multi-reference routing implemented and VRAM-passed
+(`tests/vram/router/RESULTS_RVref.md`):** `tests/router/build_router_graph.py`'s
+`build()` now accepts `refs: list[str]` (0-2 images), wiring them into the
+analyzer's `image2`/`image3` inputs, the schema's `reference_count`, and
+both `TextEncodeQwenImageEditPlus` nodes in the edit branch - closing the
+availability-specific schema selection gap below. Cold-floor VRAM pass:
+RVref2 (1 reference) 532 MiB free, RVref3 (2 references) 916 MiB free -
+both pass the 300 MiB floor, both n=1. Lazy-switch correctness
+(unused branch never loads) confirmed to hold with references present.
+Not yet measured under back-to-back-without-`/free` sequencing - given the
+single-image case's margin tightened significantly under that sequencing
+(456 -> 238/271 MiB), do not assume the multi-reference margins hold under
+repeated production usage without `/free` either.
 
-- multi-reference (`image2`/`image3`) routing - this test is the
-  single-source-image case only; availability-specific schema selection at
-  the router level (building the right schema variant for however many
-  images are actually supplied) is still not implemented. RV-edit's
-  already-tight single-reference margin is a concrete reason this needs
-  its own VRAM re-test, not an extrapolation from the numbers above.
+**Not settled by this milestone:**
 - the analyzer-load gap itself is fixed (see above,
   `RESULTS_RVfix.md`) - but the edit branch's own tight margin that
-  replaced it (271/238 MiB free, n=2) has no fix proposed yet, and its
-  root cause is not isolated from the analyzer fix (see Codex's caution
-  above). A smallest-next-test Codex suggested but has not been run: fresh
-  `/free` -> edit-branch request only (no preceding generate request), to
-  separate "requires the prior generate run" from "this is just the edit
-  branch's own steady footprint."
+  replaced it (271/238 MiB free, n=2) has no code-level fix proposed. The
+  isolation test Codex suggested has been run: an edit-only request (no
+  preceding generate request) still measured only 456 MiB free - tighter
+  than the original `RESULTS_RV.md` clean-edit figure (954 MiB, no longer
+  a stable baseline) and itself not a wide margin. Per Codex's read (this
+  session), the edit branch is ComfyUI-managed and already full-loads
+  successfully - the constraint looks like Qwen Image Edit 2511's genuine
+  VRAM footprint being close to this 16 GB card's ceiling under this
+  graph/session shape, not a fixable eviction defect the way the analyzer
+  gap was. Accepted mitigation for this session: keep the mandatory
+  `/free`-between-requests rule below as the actual answer, rather than
+  chase a code fix. A lowvram/`--reserve-vram` experiment is a candidate
+  future direction but was explicitly deferred - it trades speed/quality
+  for headroom and needs its own measured pass, not assumed syntax.
 - plan/content quality (`is_local_region` accuracy, edit locality on a real
   photo, identity preservation) - unchanged from the existing structural-
   only findings above
