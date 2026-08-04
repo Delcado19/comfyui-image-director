@@ -323,6 +323,13 @@ without an actual controlled runtime test.
   only measured 456 MiB free, so even a cold edit branch has limited
   margin on this 16 GB card. A lowvram/`--reserve-vram` experiment is a
   possible future direction, explicitly not attempted this pass.
+  **Multi-reference makes this worse, not better:** a 2-reference
+  generate -> edit back-to-back sequence (`RESULTS_RVrefchain.md`)
+  measured only **196 MiB free** (n=1) - the tightest margin recorded in
+  this project - despite the isolated multi-reference margin (916 MiB)
+  being roomier than the isolated single-image margin (456 MiB). The
+  back-to-back sequencing cost is larger for multi-reference than for
+  single-image, opposite of what the isolated numbers alone predict.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
@@ -332,10 +339,10 @@ without an actual controlled runtime test.
   the non-router `combined-multiref` E2/E3 tests. Cold-floor VRAM: RVref2
   (1 reference) 532 MiB free, RVref3 (2 references) 916 MiB free, both
   n=1, both pass the 300 MiB floor. Lazy-switch correctness (unused branch
-  never loads) confirmed to hold with references present. NOT measured
-  under back-to-back-without-`/free` sequencing - given the single-image
-  case tightened significantly under that sequencing, do not assume these
-  margins hold under repeated production usage without `/free`.
+  never loads) confirmed to hold with references present. Back-to-back-
+  without-`/free` sequencing measured once (196 MiB free, see the hard
+  rule above) - do not treat the isolated 916 MiB figure as representative
+  of production back-to-back usage.
 - The tested sequential Analyzer -> Editor path depends on
   `keep_model_loaded=false` on the analyzer node (its default is `true`);
   do not assume the tested VRAM-release behavior holds without that setting.
