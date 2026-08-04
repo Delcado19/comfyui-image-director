@@ -615,7 +615,14 @@ back-to-back usage.
   below is the settled default operational answer, not just a fallback;
   `--reserve-vram` stays documented as a verified-working alternative
   lever if VRAM pressure ever forces the question again, but it is not the
-  plan.
+  plan. **Per-workflow opt-in added instead:** the user does not want
+  `--reserve-vram` for regular ComfyUI use, so
+  `G:\ComfyUI-Easy-Install\Start ComfyUI.bat` stays untouched. A separate
+  wrapper, `G:\ComfyUI-Easy-Install\Start ComfyUI (ImageDirector reserve-vram).bat`,
+  calls `Start ComfyUI.bat --reserve-vram 2.5` via the existing `%*`
+  forwarding (no duplicated launch logic) - only for launching ComfyUI
+  ahead of this project's multi-reference edit workflow when the extra
+  margin is wanted. Use the plain `.bat` for everything else.
 - plan/content quality - a first n=1x3 real-photo look is done (see
   "Plan/content quality on a real photo" above,
   `tests/router/RESULTS_content_quality.md`): local edit and global
