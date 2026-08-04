@@ -82,6 +82,32 @@ footprint regardless of what ran before it."
   branch's own diffusion load, and that point is measured tighter (n=2:
   271, 238 MiB free) than the original problem it replaced (901 MiB).
 
+## Isolation test: is the back-to-back sequence itself a contributing factor?
+
+Codex's suggested follow-up, run once: fresh `/free`, then a single edit
+request submitted alone - no preceding generate/analyzer request - with
+`free_vram_before_load=True` still set (harmless here, it's the only load
+happening). Graph: `tests/router/runs/RViso_edit.graph.json`. Log:
+`vram_log_RViso_edit.csv`.
+
+**Result: 456 MiB free**, log-confirmed `full load: True`, no errors, no
+OOM. Compared against the n=2 back-to-back result (271, 238 MiB free), the
+back-to-back sequence itself costs roughly 200 MiB of margin versus an
+isolated edit request - confirmed contributing factor, not irrelevant.
+Per Codex: enough to document with this wording at n=1 on the isolated
+side; do not generalize to "back-to-back always costs exactly 200 MiB"
+without further repeats, but no further repeat is required before keeping
+the hard rule - the measured margin is repeatedly below 300 MiB either way.
+
+**Separate, still-unexplained gap:** 456 MiB (this isolated run) is itself
+tighter than `RESULTS_RV.md`'s original clean cold-floor edit case (954
+MiB free, also n=1). Per Codex, this ~500 MiB gap should not be dismissed
+as ordinary seed variance and is an open question in its own right -
+`RESULTS_RV.md`'s 954 MiB figure should no longer be treated as a stable
+"clean edit baseline." Possible causes not distinguished by this test:
+prompt/seed content, allocator/session state drift, code/graph changes
+made since that measurement, or driver/runtime drift.
+
 ## What this does not settle / open concern
 
 - n=2 on the *edit-branch* margin specifically - same caveat the original
@@ -95,3 +121,6 @@ footprint regardless of what ran before it."
 - No fix proposed for this second finding - out of scope for this pass.
   See `PROJECT_RULES.md`'s mandatory safety rules for the resulting hard
   rule update.
+- The ~500 MiB gap between this session's isolated-edit margin (456 MiB)
+  and `RESULTS_RV.md`'s original clean-edit margin (954 MiB) is unexplained
+  and not investigated further here.

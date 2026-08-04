@@ -506,6 +506,16 @@ independent of the fix, only that the fix's own target - the analyzer load
 - is confirmed no longer the tight point). See the updated mandatory
 safety rules below.
 
+**Isolation follow-up:** an edit-only request submitted alone (no
+preceding generate/analyzer request, fresh `/free`) measured **456 MiB
+free** - confirming the back-to-back sequence itself costs roughly 200 MiB
+of margin versus an isolated request (n=1 on the isolated side, per Codex
+enough to document but not to generalize the exact magnitude). Also
+flags a separate, unexplained ~500 MiB gap between this isolated result
+(456 MiB) and the original `RESULTS_RV.md` clean-edit measurement (954
+MiB) - that older figure should no longer be treated as a stable
+baseline. See `tests/vram/router/RESULTS_RVfix.md` for full detail.
+
 **Not settled by this milestone:**
 
 - multi-reference (`image2`/`image3`) routing - this test is the
