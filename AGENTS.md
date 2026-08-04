@@ -321,8 +321,13 @@ without an actual controlled runtime test.
   second finding - accepted mitigation is the same `/free`-between-
   requests rule; an isolated (no preceding request) edit-only run still
   only measured 456 MiB free, so even a cold edit branch has limited
-  margin on this 16 GB card. A lowvram/`--reserve-vram` experiment is a
-  possible future direction, explicitly not attempted this pass.
+  margin on this 16 GB card. **`--reserve-vram 2.5` validated as a working
+  alternative mitigation** (`tests/vram/router/RESULTS_reservevram.md`):
+  moves the worst tested margin (196 MiB) to 2410 MiB by forcing partial
+  UNet loading, at a real ~1.5-2x speed cost. Verified mechanism (traced
+  `load_models_gpu()` in `model_management.py`), n=1 on the hardest case
+  only. Not adopted as default - ComfyUI restored to standard launch
+  right after the test, per the user's explicit preference.
   **Multi-reference makes this worse, not better:** a 2-reference
   generate -> edit back-to-back sequence (`RESULTS_RVrefchain.md`)
   measured **196 MiB free (run 1), 463 MiB free (run 2)** - the worse of

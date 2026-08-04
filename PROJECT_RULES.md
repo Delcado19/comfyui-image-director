@@ -590,11 +590,17 @@ back-to-back usage.
   successfully - the constraint looks like Qwen Image Edit 2511's genuine
   VRAM footprint being close to this 16 GB card's ceiling under this
   graph/session shape, not a fixable eviction defect the way the analyzer
-  gap was. Accepted mitigation for this session: keep the mandatory
-  `/free`-between-requests rule below as the actual answer, rather than
-  chase a code fix. A lowvram/`--reserve-vram` experiment is a candidate
-  future direction but was explicitly deferred - it trades speed/quality
-  for headroom and needs its own measured pass, not assumed syntax.
+  gap was. **`--reserve-vram 2.5` validated as a working mitigation**
+  (`tests/vram/router/RESULTS_reservevram.md`): moves the worst tested
+  back-to-back margin (multi-reference, no `/free`) from 196 MiB to 2410
+  MiB by forcing `QwenImage`'s UNet into partial/streamed loading instead
+  of full residency - at a real cost (~1.5-2x slower on the tested
+  request). Not adopted as the default launch config - ComfyUI was
+  restored to standard immediately after the n=1 test. The mandatory
+  `/free`-between-requests rule below remains the default operational
+  answer; `--reserve-vram` is now a documented, verified-working
+  alternative if the user later wants to trade speed for headroom
+  project-wide instead.
 - plan/content quality - a first n=1x3 real-photo look is done (see
   "Plan/content quality on a real photo" above,
   `tests/router/RESULTS_content_quality.md`): local edit and global
