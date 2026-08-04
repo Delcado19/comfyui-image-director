@@ -35,13 +35,31 @@ both runs. Prompt text identical except the clause under test:
 as closely as possible.) Graphs: `tests/router/runs/AB_bg_with.graph.json`,
 `AB_bg_without.graph.json`.
 
-## Runtime anomaly (unresolved, not attributed to either variant)
+## Runtime anomaly (cause found via Windows Event Log, not further diagnosed)
 
-ComfyUI crashed with no traceback between the two runs - the log shows
-"got prompt" for the "without" submission and then nothing further; the
-process stopped responding on port 8188. GPU came back idle/normal
-(1682 MiB used) once checked, so not an OOM/VRAM issue as far as observed.
-Cause not investigated (out of scope for this test). User restarted
+ComfyUI crashed with no traceback in its own log between the two runs -
+the log shows "got prompt" for the "without" submission at 19:13:17 and
+then nothing further; the process stopped responding on port 8188. GPU
+came back idle/normal (1682 MiB used) once checked, so not an OOM/VRAM
+capacity issue as far as observed.
+
+Windows Event Log (Application, `Application Error`/`Windows Error
+Reporting`, event IDs 1000/1001) confirms a real native-code crash at
+19:13:26 - `python.exe` (the ComfyUI embedded interpreter) hit an access
+violation (`0xc0000005`) inside
+`G:\ComfyUI-Easy-Install\python_embeded\Lib\site-packages\torch\lib\c10.dll`
+(PyTorch's core C++ library), offset `0x8f514`. This is a hard native
+crash, not a Python exception - explains why nothing appeared in
+ComfyUI's own log (a Python-level traceback would have been written; a
+C++-level access violation kills the process before that can happen).
+Timing lines up with model loading/inference during the "without" run's
+processing.
+
+n=1, not reproduced, not further diagnosed (out of scope for this test -
+per Codex's guidance, a quick read-only log triage was sufficient; no
+config change or repro attempt made). Candidate causes not distinguished:
+driver-level flakiness, a CUDA allocator race, or a PyTorch/torch build
+issue - genuinely unknown from this single occurrence. User restarted
 ComfyUI; the "without" run was then re-submitted fresh with a `/free`
 first, same seed/graph as originally planned. Per Codex: this restart gap
 weakens "same process state" but not the isolation itself - same graph,
