@@ -293,12 +293,43 @@ analyzer loader itself:
   reliability pass (the multi-reference back-to-back VRAM margin is now
   measured twice, 196/463 MiB free - see the mandatory safety rules below),
   and any plan/content-quality guarantee
-- visual acceptance tests (identity preservation, edit locality, instruction
-  compliance) on real photos
+- visual acceptance tests on real photos - a first n=1x3 look is done (see
+  "Plan/content quality on a real photo" below,
+  `tests/router/RESULTS_content_quality.md`) - local edit and global
+  restyle passed both structurally and visually; a multi-reference color
+  transfer failed visually despite a reasonable consumed prompt. Not a
+  reliability screen - one photo, one seed per case.
 
 Do not infer routing correctness or image quality from the loader/runtime
 smoke tests alone. See below: structural JSON reliability is now solved;
 plan/content quality is not.
+
+### Plan/content quality on a real photo — first look, not a reliability screen
+
+`tests/router/RESULTS_content_quality.md`: 3 cases on a real photo (local
+object removal, global restyle, multi-reference color match), each n=1.
+Local removal and global restyle passed both the structured plan and the
+visual output. The multi-reference case's plan had multiple issues
+(`is_local_region` likely wrong, `images.image2.role: "source"` - a real
+schema gap, see below - and the recurring `"entire image"`/`"full image"`
+placeholder overuse already documented on synthetic images) and its
+*visual* output also failed (the whole image got tinted, not just the
+targeted garment) - but per Codex's review, the wrong structured fields
+cannot be asserted as the cause, since the current router only consumes
+`task`/`prompt` from the plan; `edits[]`/`preserve[]`/`images[].role` are
+generated but never read downstream. Case 1 is the proof this separation
+is real: its `edits[]` was wrong too, but its visual result was correct,
+because the actually-consumed `prompt` field was accurate.
+
+**New schema gap found (documented, not fixed):** reference image slots
+(`image2`/`image3`) can legally have `role: "source"` -
+`image_director/edit_plan_schema.py`'s `_IMAGE_SLOT` role enum
+(`ROLE_ENUM_ORDERED`) is not narrowed to exclude `"source"` for
+non-`image1` slots, so a semantically wrong plan passes both grammar
+constraint and `validate_edit_plan()`. Candidate minimal fix: a
+reference-role enum excluding `"source"`, plus a validator check
+(`slot_name != "image1" and role == "source"` -> reject) - not
+implemented this pass.
 
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
@@ -555,9 +586,12 @@ back-to-back usage.
   chase a code fix. A lowvram/`--reserve-vram` experiment is a candidate
   future direction but was explicitly deferred - it trades speed/quality
   for headroom and needs its own measured pass, not assumed syntax.
-- plan/content quality (`is_local_region` accuracy, edit locality on a real
-  photo, identity preservation) - unchanged from the existing structural-
-  only findings above
+- plan/content quality - a first n=1x3 real-photo look is done (see
+  "Plan/content quality on a real photo" above,
+  `tests/router/RESULTS_content_quality.md`): local edit and global
+  restyle passed, a multi-reference color transfer failed visually. Not a
+  reliability screen - one photo, one seed per case, root cause of the
+  failure not isolated.
 - the Z-Image Turbo checkpoint/text-encoder pair used here
   (`jibMixZIT_v10.safetensors` + `Lockout-Qwen3-4b-zimage-hereticV2-q8.gguf`,
   both user-chosen) was not benchmarked against the other checkpoint/CLIP

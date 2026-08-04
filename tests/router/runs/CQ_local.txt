@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "user_instruction": "Remove the beer bottle standing on top of the trash can.",
+  "prompt": "- Remove a green Beck's beer bottle from atop the blue trash bin behind and to the left of the woman in black leather attire, ensuring no other elements are altered or removed. Preserve all background scenery including buildings, trees, road signs, street furniture like benches, and any part of her clothing that is not directly interacting with this object.",
+  "is_local_region": true,
+  "images": {
+    "image1": {
+      "role": "source"
+    }
+  },
+  "edits": [
+    {"subject": "entire image", "region": "full image", "operation": "remove"}
+  ]
+  ,"preserve": ["woman","her clothing"]
+}

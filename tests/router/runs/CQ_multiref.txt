@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "user_instruction": "Change the color of the woman's leather dress to match the color shown in reference image.",
+  "prompt": "The woman is wearing a black leather dress that needs to be changed to match the color from Reference Image #2, which appears as a solid blue background. The rest should remain unchanged."
+  ,
+   "is_local_region": false,
+    "images": {
+        "image1": {"role": "source"},
+         "image2": {"role": "source"}
+          },
+           "edits": [
+                {
+                    "subject": "entire image",
+                    "region": "full image"
+                  , "operation": "replace", "reference_slots": ["image2"]
+                   }
+            ]
+        ,
+    "preserve": [
+         "background",
+          "environment",
+           "person's appearance other than the dress color",
+             "pose and expression of person"
+              ]}

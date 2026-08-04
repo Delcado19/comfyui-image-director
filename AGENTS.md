@@ -333,6 +333,21 @@ without an actual controlled runtime test.
   the isolated numbers alone predict; the spread between the two runs
   (196 vs. 463) is itself evidence this scenario isn't stable enough to
   call safe without `/free`.
+- **Plan/content quality: first real-photo look done**
+  (`tests/router/RESULTS_content_quality.md`), n=1x3, not a reliability
+  screen. Local object removal and global restyle passed both the
+  structured plan and the visual output on a real photo. A multi-reference
+  color-match case failed visually (whole image tinted instead of just the
+  targeted garment) and its plan had real issues (`is_local_region` likely
+  wrong, `images.image2.role: "source"` - see the new schema gap below,
+  the recurring `"entire image"`/`"full image"` placeholder overuse). Per
+  Codex's review, do not assert the plan bugs *caused* the visual
+  failure - the router only consumes `task`/`prompt` from the plan,
+  `edits[]`/`preserve[]`/`images[].role` are generated but never read
+  downstream (case 1's bad `edits[]` didn't break its correct visual
+  result, proving this). **New schema gap:** reference slots can legally
+  claim `role: "source"` (`edit_plan_schema.py`'s `_IMAGE_SLOT` role enum
+  isn't narrowed) - documented, not fixed.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

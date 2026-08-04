@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "task": "edit",
+  "user_instruction": "Restyle the entire photo as a vintage 1970s film photograph with warm faded colors and visible film grain.",
+  "prompt": "vintage 1970s film photograph, warm faded colors, visible film grain"
+  ,"is_local_region": false,
+  "images": {
+    "image1": {
+      "role": "source"
+    }
+  },
+  "edits": [
+    {"subject": "entire image", "region": "full image", "operation": "restyle"}
+  ]
+  , "preserve": ["background", "person's outfit"]
+}
