@@ -321,15 +321,24 @@ generated but never read downstream. Case 1 is the proof this separation
 is real: its `edits[]` was wrong too, but its visual result was correct,
 because the actually-consumed `prompt` field was accurate.
 
-**New schema gap found (documented, not fixed):** reference image slots
-(`image2`/`image3`) can legally have `role: "source"` -
-`image_director/edit_plan_schema.py`'s `_IMAGE_SLOT` role enum
-(`ROLE_ENUM_ORDERED`) is not narrowed to exclude `"source"` for
-non-`image1` slots, so a semantically wrong plan passes both grammar
-constraint and `validate_edit_plan()`. Candidate minimal fix: a
-reference-role enum excluding `"source"`, plus a validator check
-(`slot_name != "image1" and role == "source"` -> reject) - not
-implemented this pass.
+**Schema gap fixed (same session):** reference image slots (`image2`/
+`image3`) could legally have `role: "source"` -
+`image_director/edit_plan_schema.py`'s `_IMAGE_SLOT` role enum was not
+narrowed to exclude `"source"` for non-`image1` slots, so a semantically
+wrong plan passed both grammar constraint and `validate_edit_plan()`.
+Fixed: added `REFERENCE_ROLE_ENUM_ORDERED` (the full role list minus
+`"source"`), used it for `_IMAGE_SLOT`, and `validate_edit_plan()` now
+checks `image1`'s role against `== "source"` specifically and every other
+slot against the narrower enum. Self-tested (schema/validator reject the
+old bug, accept correct plans, all 5 previously-saved
+`analyzer-json-structured` outputs still validate clean). Re-testing case
+3 live confirmed `image2.role` is now `"object_reference"`, not
+`"source"`. The re-test's visual output also happened to be correct this
+time, but that should NOT be attributed to this fix - the render path
+still doesn't consume `images[].role` at all; see
+`tests/router/RESULTS_content_quality.md`'s "Update" section for the more
+likely explanation (prompt wording variance between the two analyzer
+samples).
 
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 

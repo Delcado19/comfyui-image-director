@@ -345,9 +345,19 @@ without an actual controlled runtime test.
   failure - the router only consumes `task`/`prompt` from the plan,
   `edits[]`/`preserve[]`/`images[].role` are generated but never read
   downstream (case 1's bad `edits[]` didn't break its correct visual
-  result, proving this). **New schema gap:** reference slots can legally
-  claim `role: "source"` (`edit_plan_schema.py`'s `_IMAGE_SLOT` role enum
-  isn't narrowed) - documented, not fixed.
+  result, proving this). **Schema gap fixed (same session):** reference
+  slots could legally claim `role: "source"` -
+  `edit_plan_schema.py`'s `_IMAGE_SLOT` role enum is now narrowed
+  (`REFERENCE_ROLE_ENUM_ORDERED`, excludes `"source"`), validator updated
+  to match, self-tested with no regression on the 5 previously-saved
+  outputs. Re-testing case 3 confirmed the fix (`image2.role` is now
+  `"object_reference"`) - its visual output also happened to pass this
+  time, but per Codex, do not credit the schema fix for that, since the
+  render path still doesn't consume `images[].role`; the more likely
+  cause is prompt-wording variance between the two analyzer samples (see
+  `RESULTS_content_quality.md`'s "Update" section). `is_local_region`
+  misclassification and `"entire image"`/`"full image"` placeholder
+  overuse remain open, unfixed.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

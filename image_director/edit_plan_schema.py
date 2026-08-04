@@ -38,6 +38,15 @@ ROLE_ENUM_ORDERED = [
     "scene_reference", "other_reference",
 ]
 ROLE_ENUM = set(ROLE_ENUM_ORDERED)
+# image2/image3 are references, never the source - "source" is reserved for
+# image1 (see _SOURCE_SLOT's const below). Without this narrower enum, a
+# reference slot could legally claim role="source" and pass both grammar
+# constraint and validate_edit_plan() despite being semantically wrong -
+# found on a real photo, see comfyui-image-director's
+# tests/router/RESULTS_content_quality.md case 3 (images.image2.role:
+# "source").
+REFERENCE_ROLE_ENUM_ORDERED = [r for r in ROLE_ENUM_ORDERED if r != "source"]
+REFERENCE_ROLE_ENUM = set(REFERENCE_ROLE_ENUM_ORDERED)
 # Ordered (not just the set - "required" list order matches the emission
 # order the first-party test validated, even though JSON Schema itself
 # treats "required" as an unordered set) plus the set form for fast
@@ -63,7 +72,7 @@ _IMAGE_SLOT = {
     "type": "object",
     "additionalProperties": False,
     "required": ["role"],
-    "properties": {"role": {"enum": list(ROLE_ENUM_ORDERED)}},
+    "properties": {"role": {"enum": list(REFERENCE_ROLE_ENUM_ORDERED)}},
 }
 
 _SOURCE_SLOT = {
@@ -232,10 +241,14 @@ def validate_edit_plan(raw_text: str, provided_image_slots) -> list:
             for slot_name, slot_val in images.items():
                 if not isinstance(slot_val, dict) or set(slot_val.keys()) != {"role"}:
                     errors.append(f"images.{slot_name} must be exactly {{'role': ...}}, got: {slot_val!r}")
-                elif slot_val.get("role") not in ROLE_ENUM:
-                    errors.append(f"images.{slot_name}.role not in enum: {slot_val.get('role')!r}")
-            if "image1" in images and images.get("image1", {}).get("role") != "source":
-                errors.append(f"images.image1.role != source: {images.get('image1')!r}")
+                elif slot_name == "image1":
+                    if slot_val.get("role") != "source":
+                        errors.append(f"images.image1.role not in enum: {slot_val.get('role')!r}")
+                elif slot_val.get("role") not in REFERENCE_ROLE_ENUM:
+                    errors.append(
+                        f"images.{slot_name}.role not in reference-role enum (image1 is the only slot allowed "
+                        f"'source'): {slot_val.get('role')!r}"
+                    )
 
         valid_reference_keys = provided_keys - {"image1"}
         edits = plan.get("edits", [])

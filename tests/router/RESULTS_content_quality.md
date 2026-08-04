@@ -86,6 +86,30 @@ buildings, background, pavement, everything - not just the dress, which
 barely changed. This directly contradicts both the instruction and the
 plan's own `preserve: ["background", "environment", ...]` list.
 
+## Update: `image2.role="source"` schema gap fixed, case 3 re-tested
+
+`image_director/edit_plan_schema.py`: `_IMAGE_SLOT`'s role enum now uses a
+new `REFERENCE_ROLE_ENUM_ORDERED` (the full role list minus `"source"`),
+and `validate_edit_plan()` checks `image1`'s role against `== "source"`
+specifically and every other slot's role against that narrower enum
+specifically. Self-tested (schema excludes `"source"` from `image2`'s
+enum; validator rejects a fabricated `image2.role="source"` plan; accepts
+a correct plan; all 5 previously-saved `analyzer-json-structured` outputs
+still validate clean, no regression).
+
+Re-ran case 3 (fresh seeds, same instruction/reference image). Result:
+`images.image2.role` is now `"object_reference"` - the fix works for its
+target, this role can no longer be `"source"`. **The visual output this
+time was also correct** (dress turned blue, background/everything else
+unchanged) - but this should not be attributed to the role-schema change,
+since the render path does not consume `images[].role` (see below). The
+consumed `prompt` also changed between samples: the failed run described
+the reference swatch as "a solid blue background," while the passing run
+described it as "a solid blue." That wording variance is the most
+plausible observed contributor to the different visual outcome, but this
+was not isolated in an A/B test - graphs:
+`tests/router/runs/CQ_multiref_fixed.graph.json`.
+
 ## Why plan bugs didn't break case 1, but case 3 still failed
 
 Verified directly against `build_router_graph.py` (Codex cross-checked
@@ -133,7 +157,10 @@ prompt-only (no mask/region) garment-level color transfer with this model
   case 3 with a photographic reference image (e.g. a photo of a red
   garment) instead of a flat color swatch, to see whether the failure is
   specific to abstract color references.
-- The `image2.role: "source"` schema gap is documented, not fixed.
+- The `image2.role: "source"` schema gap is fixed (see the "Update" section
+  above) - `is_local_region` misclassification and the `"entire
+  image"`/`"full image"` placeholder-overuse pattern are NOT fixed, still
+  open.
 - No systematic identity-preservation check (e.g. face similarity scoring)
   was done - "identity preserved" here is a visual judgment call, not a
   measured metric.
