@@ -147,10 +147,13 @@ Current candidate execution branches:
   instruction "remove the blue square, keep everything else unchanged")
   completed with `execution_success`, and the output image was visually
   inspected (not pixel/mask-diffed): the blue square appeared correctly
-  removed while the red circle and background appeared preserved. Not yet
-  re-run through the full Test C analyzer+editor combined path or the
-  E2/E3 multi-reference VRAM tests - only this standalone single-reference
-  editor smoke test is confirmed. The old 2509 UNet
+  removed while the red circle and background appeared preserved. At the
+  time of this note (2026-08-03), this model pair had not yet been re-run
+  through the full Test C analyzer+editor combined path or the E2/E3
+  multi-reference VRAM tests - only this standalone single-reference
+  editor smoke test was confirmed; the router built the next day supersedes
+  this with its own multi-reference VRAM passes (`RESULTS_RVref.md`,
+  `RESULTS_RVrefchain.md`) using this same model pair. The old 2509 UNet
   (`Qwen-Image-Edit-2509-Q4_K_M.gguf`) was deleted; its `.metadata.json`/
   `.jpeg` were kept for provenance. Production workflows that hardcoded the
   old UNet filename (`Qwen Image Edit - VTON v13/v14/v15.json`,
@@ -457,12 +460,13 @@ image here - most likely the current 2511 + abliterated-encoder pair
 having a larger combined footprint than E2/E3's older 2509 + standard-
 encoder pair (exact contributor not isolated). Per Codex review: **this is
 now the real binding constraint** - at the time of this test, multi-
-reference edit routing had not been measured; it has since passed its own
-cold-floor VRAM pass (see "Multi-reference routing implemented" above and
-`tests/vram/router/RESULTS_RVref.md`) but NOT a back-to-back-without-
-`/free` pass, so do not extrapolate safety there yet. Also newly observed:
-neither branch's models are released after the run completes (both settle
-to a resident plateau, not back to idle).
+reference edit routing had not been measured; it has since been
+measured both cold-floor (see "Multi-reference routing implemented"
+above, `RESULTS_RVref.md`) and back-to-back without `/free` (196/463 MiB
+free, see "Multi-reference routing implemented" and the mandatory safety
+rules below, `RESULTS_RVrefchain.md`). Also newly observed: neither
+branch's models are released after the run completes (both settle to a
+resident plateau, not back to idle).
 
 **Back-to-back requests without `/free`, characterized and found unsafe as
 a default policy (`tests/vram/router/RESULTS_RVchain.md`):** running

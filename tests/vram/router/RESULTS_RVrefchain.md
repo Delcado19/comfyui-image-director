@@ -60,9 +60,9 @@ opposite of what the isolated numbers alone would suggest.
 
 ## What this settles
 
-- Multi-reference router requests complete successfully at n=1 even under
+- Multi-reference router requests complete successfully at n=2 even under
   back-to-back-without-`/free` sequencing that stacks a resident prior
-  request - no observed failure.
+  request - no observed failure in either run.
 - The existing mandatory `/free`-between-requests rule
   (`PROJECT_RULES.md`) is not just "still needed" for the multi-reference
   case - this run is the strongest evidence for that rule so far. 196 MiB

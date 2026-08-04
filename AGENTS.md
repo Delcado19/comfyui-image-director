@@ -291,9 +291,9 @@ without an actual controlled runtime test.
   but is the tightest margin recorded for any passing VRAM test here, per
   Codex review "now the real binding constraint." At the time of this test
   multi-reference (`image2`/`image3`) routing had not been built; it has
-  since passed its own cold-floor VRAM pass (see the multi-reference bullet
-  below) but not a back-to-back-without-`/free` pass. Also: neither
-  branch's models unload after a run completes (both stay GPU-resident).
+  since passed cold-floor VRAM and been characterized back-to-back (see
+  the multi-reference bullet below). Also: neither branch's models unload
+  after a run completes (both stay GPU-resident).
 - **Analyzer-load gap fixed:** `QwenVLStructuredGGUF` (external repo
   `comfyui-qwenvl-structured-gguf/nodes/structured_gguf_vl.py`) got an
   opt-in `free_vram_before_load: BOOLEAN` (default `False`) that calls
