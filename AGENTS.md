@@ -360,9 +360,15 @@ without an actual controlled runtime test.
   time, but per Codex, do not credit the schema fix for that, since the
   render path still doesn't consume `images[].role`; the more likely
   cause is prompt-wording variance between the two analyzer samples (see
-  `RESULTS_content_quality.md`'s "Update" section). `is_local_region`
-  misclassification and `"entire image"`/`"full image"` placeholder
-  overuse remain open, unfixed.
+  `RESULTS_content_quality.md`'s "Update" section). **This wording
+  hypothesis was later isolated and confirmed** via a standalone,
+  analyzer-bypassing A/B test (same seed/images, only the prompt's
+  "background" clause varied): "a solid blue background" reproduced the
+  whole-image tint, "a solid blue" gave the correct dress-only result -
+  see `tests/router/RESULTS_ab_background_word.md`. Not confirmed to
+  generalize beyond this one image/prompt pair; not yet acted on at the
+  analyzer-prompting level. `is_local_region` misclassification and
+  `"entire image"`/`"full image"` placeholder overuse remain open, unfixed.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

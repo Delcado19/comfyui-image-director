@@ -106,8 +106,9 @@ since the render path does not consume `images[].role` (see below). The
 consumed `prompt` also changed between samples: the failed run described
 the reference swatch as "a solid blue background," while the passing run
 described it as "a solid blue." That wording variance is the most
-plausible observed contributor to the different visual outcome, but this
-was not isolated in an A/B test - graphs:
+plausible observed contributor to the different visual outcome; this was
+later isolated in a dedicated standalone A/B test and confirmed (see the
+"Update: 'background'-word hypothesis isolated" section below) - graphs:
 `tests/router/runs/CQ_multiref_fixed.graph.json`.
 
 ## Why plan bugs didn't break case 1, but case 3 still failed
@@ -147,16 +148,30 @@ prompt-only (no mask/region) garment-level color transfer with this model
   reference image) failed at n=1 - the model applied the reference
   globally instead of to the intended local subject.
 
+## Update: "background"-word hypothesis isolated via standalone A/B test
+
+The wording-variance hypothesis above ("not isolated in an A/B test") was
+isolated in a follow-up standalone test that bypasses the analyzer (removes
+analyzer sampling, schema, and `role` as confounds) and varies only the
+consumed prompt's "background" clause, same seed/images otherwise. Result:
+**confirmed** - "a solid blue background" produced the same whole-image
+tint failure, "a solid blue" (no "background") produced the correct
+dress-only result. See `tests/router/RESULTS_ab_background_word.md` for
+full method and result. Root cause of case 3's original failure is now
+explained (prompt wording, not the schema `role` gap) - not yet fixed at
+the analyzer-prompting level (see that file's "does not settle" section).
+
 ## What this does not settle / open concern
 
 - n=1 per case - no repeat-seed screen, matches this project's existing
   scope limitation for all such tests.
-- Root cause of case 3's failure not isolated (Qwen Image Edit's reference
-  handling vs. prompt phrasing vs. a fundamental limitation of solid-color-
-  swatch references for garment-level edits) - candidate follow-up: retry
-  case 3 with a photographic reference image (e.g. a photo of a red
-  garment) instead of a flat color swatch, to see whether the failure is
-  specific to abstract color references.
+- Root cause of case 3's failure: **now explained** by the "background"-word
+  A/B test above, not fully "isolated" in the sense of a fundamental model
+  limitation being ruled out (single seed/image pair only) - candidate
+  follow-up: retry case 3 with a photographic reference image (e.g. a photo
+  of a red garment) instead of a flat color swatch, to see whether the
+  failure is specific to abstract color references vs. specific to the
+  "background" wording.
 - The `image2.role: "source"` schema gap is fixed (see the "Update" section
   above) - `is_local_region` misclassification and the `"entire
   image"`/`"full image"` placeholder-overuse pattern are NOT fixed, still

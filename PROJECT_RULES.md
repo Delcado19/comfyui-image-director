@@ -340,6 +340,14 @@ still doesn't consume `images[].role` at all; see
 likely explanation (prompt wording variance between the two analyzer
 samples).
 
+**"background"-word hypothesis isolated and confirmed (A/B test):** the
+prompt-wording explanation above was later isolated in a standalone
+analyzer-bypassing A/B test (same seed/images, only the prompt's
+"background" clause varied) - confirmed causal for this image/prompt pair:
+"a solid blue background" -> whole-image tint (reproduces the original
+failure); "a solid blue" -> correct dress-only recolor. Not proven to
+generalize beyond this case. See `tests/router/RESULTS_ab_background_word.md`.
+
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
 The structured edit-plan schema is defined: `docs/schema/edit_plan.schema.json`
@@ -605,8 +613,11 @@ back-to-back usage.
   "Plan/content quality on a real photo" above,
   `tests/router/RESULTS_content_quality.md`): local edit and global
   restyle passed, a multi-reference color transfer failed visually. Not a
-  reliability screen - one photo, one seed per case, root cause of the
-  failure not isolated.
+  reliability screen - one photo, one seed per case. Root cause of that
+  failure is now explained (the analyzer's "background" wording, isolated
+  via a standalone A/B test - `tests/router/RESULTS_ab_background_word.md`)
+  but not fixed at the analyzer-prompting level, and not confirmed to
+  generalize beyond this one image/prompt pair.
 - the Z-Image Turbo checkpoint/text-encoder pair used here
   (`jibMixZIT_v10.safetensors` + `Lockout-Qwen3-4b-zimage-hereticV2-q8.gguf`,
   both user-chosen) was not benchmarked against the other checkpoint/CLIP
