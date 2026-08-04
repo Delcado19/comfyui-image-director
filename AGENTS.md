@@ -293,22 +293,31 @@ without an actual controlled runtime test.
   as safe for multi-reference (`image2`/`image3`) routing once that's
   built - it needs its own dedicated VRAM pass. Also: neither branch's
   models unload after a run completes (both stay GPU-resident).
-- **Hard rule (see `PROJECT_RULES.md`'s mandatory safety rules): do not
-  use the V1 router for repeated back-to-back requests without `POST
-  /free` between them.** Characterized in
-  `tests/vram/router/RESULTS_RVchain.md`: running RV-generate then
-  immediately RV-edit with no `/free` hit 901 MiB free at its worst
-  sampled point - the tightest margin recorded in this project - during
-  the *analyzer's own load* stacking on the still-resident previous
-  branch, not during diffusion sampling. Root cause: `QwenVLStructuredGGUF`
-  loads via direct `llama_cpp.Llama(...)`
-  (`comfyui-qwenvl-structured-gguf/nodes/structured_gguf_vl.py:78-102`),
-  outside `comfy.model_management`, so it cannot trigger eviction itself;
-  eviction only happened seconds later when a ComfyUI-managed node (the
-  edit branch's own `VAELoader`) requested memory. No fix has been chosen
-  or implemented - two candidate directions are documented in
-  `RESULTS_RVchain.md`, deferred to the user/Codex, not decided
-  unilaterally.
+- **Analyzer-load gap fixed:** `QwenVLStructuredGGUF` (external repo
+  `comfyui-qwenvl-structured-gguf/nodes/structured_gguf_vl.py`) got an
+  opt-in `free_vram_before_load: BOOLEAN` (default `False`) that calls
+  `comfy.model_management.unload_all_models()` + `soft_empty_cache()`
+  right before loading a genuinely new model - it loads via direct
+  `llama_cpp.Llama(...)`, outside `comfy.model_management`, so it
+  otherwise cannot trigger eviction of stale resident weights itself. Set
+  `True` only in the router graph's analyzer node
+  (`tests/router/build_router_graph.py`); every other caller stays at
+  `False`. Repeating `RESULTS_RVchain.md`'s exact back-to-back-no-`/free`
+  scenario with the fix (n=2, `tests/vram/router/RESULTS_RVfix.md`)
+  confirms it: the analyzer's load no longer stacks on resident weights,
+  and the original 901 MiB near-miss location does not recur.
+- **Hard rule still in force, root cause moved (see `PROJECT_RULES.md`'s
+  mandatory safety rules): do not use the V1 router for repeated
+  back-to-back requests without `POST /free` between them**, even with
+  the analyzer fix applied. The same n=2 RVfix test found the *edit
+  branch's own* diffusion load/`KSampler` phase is now the tightest point
+  instead - 271 MiB free (run 1), 238 MiB free (run 2), both below this
+  project's 300 MiB floor, both log-confirmed `full load: True` with no
+  errors/OOM. Root cause not isolated (could be `QwenImage`'s own
+  footprint, allocator state after the back-to-back sequence, or residual
+  effects of the analyzer's own eviction call - Codex was explicit this
+  isn't proven independent of the fix). No fix proposed for this second
+  finding yet.
 - The tested sequential Analyzer -> Editor path depends on
   `keep_model_loaded=false` on the analyzer node (its default is `true`);
   do not assume the tested VRAM-release behavior holds without that setting.

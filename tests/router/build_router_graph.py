@@ -76,6 +76,10 @@ def build(instruction: str, seed: int, analyzer_seed: int) -> dict:
                 "ctx": 8192,
                 "gpu_layers": -1,
                 "keep_model_loaded": False,
+                # Router-only: back-to-back requests without /free were measured
+                # to hit 901 MiB free VRAM here (RESULTS_RVchain.md) because this
+                # node's llama.cpp load is invisible to comfy.model_management.
+                "free_vram_before_load": True,
                 "image": ["src", 0],
             },
         },

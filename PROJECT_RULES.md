@@ -483,6 +483,29 @@ proactively made room for it. See the mandatory safety rule below - this
 is treated as a hard "do not do this in production yet" rule, not just a
 documented open concern, per Codex's explicit recommendation.
 
+**Analyzer-load gap fixed, but a second, tighter margin found in its
+place (`tests/vram/router/RESULTS_RVfix.md`):** `QwenVLStructuredGGUF` got
+an opt-in `free_vram_before_load: BOOLEAN` (default `False`) that calls
+`comfy.model_management.unload_all_models()` + `soft_empty_cache()` right
+before loading a genuinely new model. Set `True` only in the router
+graph's analyzer node (`tests/router/build_router_graph.py`). Repeating
+the exact RVchain back-to-back-no-`/free` scenario with the fix twice
+(n=2, fresh seeds each time) confirms it works: VRAM used drops sharply
+(e.g. 11555 -> 2051 MiB) immediately before the analyzer's `Llama(...)`
+load in both runs - the analyzer no longer stacks on resident weights, and
+the original 901 MiB near-miss location does not recur. **But both runs'
+overall worst sampled margin moved elsewhere and got tighter: 271 MiB free
+(run 1) and 238 MiB free (run 2), both during Qwen Image Edit 2511's own
+diffusion load/`KSampler` phase** (log-confirmed `full load: True`, no
+OOM, no errors, correct output both times). Reproducible at n=2, both
+below the project's 300 MiB floor - not attributed to noise. Root cause
+not isolated (could be `QwenImage`'s own footprint, allocator state after
+the back-to-back sequence, fragmentation, or residual residency from the
+analyzer's eviction call - Codex was explicit that this is not proven
+independent of the fix, only that the fix's own target - the analyzer load
+- is confirmed no longer the tight point). See the updated mandatory
+safety rules below.
+
 **Not settled by this milestone:**
 
 - multi-reference (`image2`/`image3`) routing - this test is the
@@ -491,12 +514,14 @@ documented open concern, per Codex's explicit recommendation.
   images are actually supplied) is still not implemented. RV-edit's
   already-tight single-reference margin is a concrete reason this needs
   its own VRAM re-test, not an extrapolation from the numbers above.
-- a fix for the back-to-back/no-`/free` gap above - two candidate
-  directions are documented in `RESULTS_RVchain.md` (make the analyzer
-  proactively request eviction before its own `Llama(...)` load, or adopt
-  an operational `/free`-between-requests policy) but neither has been
-  chosen or implemented; that decision needs the user's input, not a
-  unilateral pick
+- the analyzer-load gap itself is fixed (see above,
+  `RESULTS_RVfix.md`) - but the edit branch's own tight margin that
+  replaced it (271/238 MiB free, n=2) has no fix proposed yet, and its
+  root cause is not isolated from the analyzer fix (see Codex's caution
+  above). A smallest-next-test Codex suggested but has not been run: fresh
+  `/free` -> edit-branch request only (no preceding generate request), to
+  separate "requires the prior generate run" from "this is just the edit
+  branch's own steady footprint."
 - plan/content quality (`is_local_region` accuracy, edit locality on a real
   photo, identity preservation) - unchanged from the existing structural-
   only findings above
@@ -507,14 +532,20 @@ documented open concern, per Codex's explicit recommendation.
 
 ## Mandatory safety rules
 
+- The analyzer-load/eviction gap (`RESULTS_RVchain.md`'s 901 MiB near-miss)
+  is fixed when the router graph's analyzer node has
+  `free_vram_before_load=True` set (it is, in
+  `tests/router/build_router_graph.py`) - do not remove that flag from the
+  router graph without re-measuring.
 - Do not use the V1 task router for repeated back-to-back production
   requests without calling `POST /free {"unload_models": true,
-  "free_memory": true}` between requests, until the analyzer-load/eviction
-  gap is fixed (see "Back-to-back requests without `/free`" above and
-  `tests/vram/router/RESULTS_RVchain.md`) or a wider-margin repeated-use
-  test passes. A single measured run passed with only 901 MiB free at its
-  worst sampled point - not a wide enough margin to call unprotected
-  repeated usage safe.
+  "free_memory": true}` between requests, even with the analyzer fix
+  applied - a *different* margin (the edit branch's own diffusion
+  load/`KSampler` phase) was measured at 271/238 MiB free (n=2,
+  `tests/vram/router/RESULTS_RVfix.md`), below the project's 300 MiB
+  floor, in the exact same back-to-back-without-`/free` scenario. This
+  rule stays in force until that margin has a mitigation or a
+  wider-margin repeated-use test passes.
 - Do not modify ComfyUI files unless the current user-approved task requires it.
 - Do not install or download models, nodes or dependencies without explicit
   user approval.
