@@ -609,11 +609,13 @@ back-to-back usage.
   MiB by forcing `QwenImage`'s UNet into partial/streamed loading instead
   of full residency - at a real cost (~1.5-2x slower on the tested
   request). Not adopted as the default launch config - ComfyUI was
-  restored to standard immediately after the n=1 test. The mandatory
-  `/free`-between-requests rule below remains the default operational
-  answer; `--reserve-vram` is now a documented, verified-working
-  alternative if the user later wants to trade speed for headroom
-  project-wide instead.
+  restored to standard immediately after the n=1 test. **User decision
+  (2026-08-04): do not run `--reserve-vram` permanently** - the speed cost
+  isn't worth it project-wide. The mandatory `/free`-between-requests rule
+  below is the settled default operational answer, not just a fallback;
+  `--reserve-vram` stays documented as a verified-working alternative
+  lever if VRAM pressure ever forces the question again, but it is not the
+  plan.
 - plan/content quality - a first n=1x3 real-photo look is done (see
   "Plan/content quality on a real photo" above,
   `tests/router/RESULTS_content_quality.md`): local edit and global

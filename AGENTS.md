@@ -327,7 +327,11 @@ without an actual controlled runtime test.
   UNet loading, at a real ~1.5-2x speed cost. Verified mechanism (traced
   `load_models_gpu()` in `model_management.py`), n=1 on the hardest case
   only. Not adopted as default - ComfyUI restored to standard launch
-  right after the test, per the user's explicit preference.
+  right after the test, per the user's explicit preference. **User
+  decision (2026-08-04): not adopting `--reserve-vram` permanently** - the
+  speed cost isn't worth it project-wide. `/free`-between-requests remains
+  the settled default policy; `--reserve-vram` stays available as a
+  verified fallback lever, not the plan.
   **Multi-reference makes this worse, not better:** a 2-reference
   generate -> edit back-to-back sequence (`RESULTS_RVrefchain.md`)
   measured **196 MiB free (run 1), 463 MiB free (run 2)** - the worse of
