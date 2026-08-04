@@ -84,3 +84,38 @@ which is not consumed by the render path (established in
   word "background" when describing reference-image content - has not been
   designed or tested; this result only explains the prior failure, it
   doesn't yet fix the analyzer's prompting.
+
+## Follow-up attempt: guidance-clause fix — tried, failed, reverted
+
+Tried the obvious next step: added one clause to `GUIDANCE` (only when
+references are present) instructing the analyzer to avoid scene-level words
+like "background"/"backdrop" when describing reference content, unless the
+edit is actually about the scene. Codex reviewed the scope and wording
+before implementation (thread `019fcb5f-8503-7641-85a0-f7a74b1b7659`).
+
+Re-ran case 3 through the **full router** (real analyzer, not bypassed;
+seed 99001/analyzer_seed 99002, same photo + blue swatch). Result: **the
+guidance did not work.**
+- The analyzer's generated `prompt` still said "...which appears as a solid
+  blue background..." - the new instruction did not suppress the word at
+  this temperature (0.1, the analyzer's existing default) at n=1.
+- The visual result was also still wrong, in a different way than before:
+  the dress stayed black (didn't recolor at all), and a large blue
+  rectangular patch appeared in the scene's mid-ground instead - not a
+  full-image tint this time, but still not the intended dress-only
+  recolor. Graph: `tests/router/runs/CQ_multiref_retest2.graph.json`.
+
+Per Codex: one clean negative result (failed both the wording check and the
+visual check) is enough - more seeds would only characterize flakiness in
+an approach that already looks unreliable, not produce a trustworthy fix.
+Consistent with `PROMPT_EXPERIMENT_2026-08-03.md`'s prior finding that
+single-clause prompt patches on this analyzer aren't reliable without a
+real reliability screen. **The guidance-clause change was reverted** -
+`build_router_graph.py`'s `GUIDANCE`/`REFERENCE_NOTE_BY_COUNT` are back to
+their pre-experiment state, no `REFERENCE_PROMPT_NOTE`.
+
+**Still open:** a real mitigation for reference-based local color/attribute
+transfer likely needs something other than more analyzer wording - e.g.
+changing how the consumed edit prompt is constructed, or adding explicit
+localization/masking for garment-level recolor requests. Not designed or
+attempted here.

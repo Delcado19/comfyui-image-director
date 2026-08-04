@@ -346,7 +346,12 @@ analyzer-bypassing A/B test (same seed/images, only the prompt's
 "background" clause varied) - confirmed causal for this image/prompt pair:
 "a solid blue background" -> whole-image tint (reproduces the original
 failure); "a solid blue" -> correct dress-only recolor. Not proven to
-generalize beyond this case. See `tests/router/RESULTS_ab_background_word.md`.
+generalize beyond this case. **Follow-up guidance-clause fix attempted and
+failed:** adding an instruction to `GUIDANCE` telling the analyzer to avoid
+"background"/"backdrop" wording did not suppress the word at n=1, and the
+re-tested visual output was still wrong (differently - a background color
+patch instead of a full tint, dress still unchanged). Reverted, not
+adopted. See `tests/router/RESULTS_ab_background_word.md`.
 
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 

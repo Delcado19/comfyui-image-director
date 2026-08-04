@@ -366,9 +366,13 @@ without an actual controlled runtime test.
   "background" clause varied): "a solid blue background" reproduced the
   whole-image tint, "a solid blue" gave the correct dress-only result -
   see `tests/router/RESULTS_ab_background_word.md`. Not confirmed to
-  generalize beyond this one image/prompt pair; not yet acted on at the
-  analyzer-prompting level. `is_local_region` misclassification and
-  `"entire image"`/`"full image"` placeholder overuse remain open, unfixed.
+  generalize beyond this one image/prompt pair. **Follow-up fix attempt
+  failed:** a `GUIDANCE` clause telling the analyzer to avoid
+  "background"/"backdrop" wording did not suppress the word at n=1 and the
+  visual retest still failed (differently); reverted, not adopted - a real
+  mitigation likely needs prompt-construction or masking changes, not more
+  analyzer wording. `is_local_region` misclassification and `"entire
+  image"`/`"full image"` placeholder overuse remain open, unfixed.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
