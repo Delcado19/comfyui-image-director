@@ -432,6 +432,28 @@ any future use of these fields must go through the diagnostic consistency
 validator, not more prompting. See
 `tests/router/RESULTS_analyzer_field_reliability_fewshot.md`.
 
+**Weighted reference-attention alternative to masking tested and rejected
+(2026-08-05):** user asked for non-masking alternatives for case 3's
+locality problem. Found (via source inspection, not assumed) that
+`ComfyUI-Flux2Klein-Enhancer`'s `Flux2KleinRefLatentWeight` node - despite
+its Flux2/Klein branding - is technically compatible with Qwen Image Edit
+2511: `comfy/ldm/qwen_image/model.py` populates the same
+`reference_image_num_tokens`/`attn1_patch` hook the node reads.
+Confirmed `reference_index` semantics via `nodes_qwen.py`: index 0 =
+`image1` (source), index 1 = `image2` (reference). Smoke-tested on the
+confirmed-bad positive prompt, sweeping weight 1.0 (baseline) -> 0.7 ->
+0.5 -> 0.2 on `reference_index=1`: the whole-scene tint shrank
+monotonically and visibly, BUT the dress never recolored in any variant -
+the mechanism controls reference-influence *magnitude* globally, not
+*locality*, so it can't fix this failure mode. Confirmed clean negative
+result (Codex). With this, all identified non-masking, non-prompt-only
+levers for case 3 are now exhausted for the Qwen Image Edit 2511 path;
+masking/region-conditioning is the only remaining mechanism-level lever.
+Untested alternatives outside this Qwen path: a photographic/material
+reference instead of a flat swatch (cheapest, still untried), or a
+different reference-aware model branch (e.g. Flux2/Klein itself). See
+`tests/router/RESULTS_ref_weight.md`.
+
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
 The structured edit-plan schema is defined: `docs/schema/edit_plan.schema.json`

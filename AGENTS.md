@@ -438,6 +438,18 @@ without an actual controlled runtime test.
   this field now considered exhausted; future use needs the diagnostic
   consistency validator, not more prompting. See
   `tests/router/RESULTS_analyzer_field_reliability_fewshot.md`.
+  **Weighted reference-attention non-masking alternative tested and
+  rejected (2026-08-05):** found `ComfyUI-Flux2Klein-Enhancer`'s
+  `Flux2KleinRefLatentWeight` node is technically compatible with Qwen
+  Image Edit 2511 (verified via `comfy/ldm/qwen_image/model.py`'s
+  `attn1_patch`/`reference_image_num_tokens` hook, same one this node
+  uses, despite its Flux2/Klein branding). Smoke test (weight sweep
+  1.0/0.7/0.5/0.2 on `reference_index=1`=image2): scene tint shrank
+  monotonically, but the dress never recolored in any variant - the
+  mechanism controls reference-influence magnitude, not locality. All
+  identified non-masking levers for case 3 (Qwen Image Edit path) are now
+  exhausted; masking/region-conditioning is the only remaining
+  mechanism-level lever. See `tests/router/RESULTS_ref_weight.md`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
