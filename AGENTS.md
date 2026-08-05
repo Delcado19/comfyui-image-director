@@ -396,7 +396,18 @@ without an actual controlled runtime test.
   misclassification and `"entire image"`/`"full image"` placeholder
   overuse remain open, unfixed; the remaining candidates are
   masking/region-conditioning or a dedicated analyzer-quality fix for
-  these two fields, neither started.
+  these two fields, neither started. **Analyzer-quality follow-up
+  (2026-08-05):** re-tested a separately-reverted 2026-08-03 wording+
+  schema-order fix (`PROMPT_EXPERIMENT_2026-08-03.md`'s v3), scoped to
+  `reference_count<=1`, against case 3. Partial improvement only:
+  `edits[0].subject` became correctly specific in 5/5, but
+  `is_local_region`/`region` stayed wrong in 5/5 - same cross-field-
+  consistency wall as the earlier 3-image regression. Not adopted (a
+  half-fixed plan risks future code trusting `is_local_region` wrongly).
+  See `tests/router/RESULTS_analyzer_field_reliability_v3.md`. Next
+  candidate: a deterministic post-processor/validator (reject/re-request
+  on subject-vs-is_local_region/region contradiction) instead of more
+  wording - not started, needs its own decision.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

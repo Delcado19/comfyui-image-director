@@ -1,0 +1,112 @@
+[
+  {
+    "seed": 99002,
+    "prompt_id": "07fc5e9e-d701-4164-80ef-5739c763ff31",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"},\n    \"image2\": {\"role\": \"material_style_reference\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"woman's leather dress\",\n      \"region\": \"entire image\",\n      \"operation\": \"replace\",\n      \"reference_slots\": [\"image2\"]\n    }\n  ],\n  \"preserve\": [\n    \"background\"\n  ]\n   ,\"user_instruction\": \"Change the color of the woman's leather dress to match the color shown in the reference image.\"\n     , \"prompt\": \"change the color of the woman's leather dress to match the color from picture2\"\n}",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "woman's leather dress",
+        "entire image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": false,
+    "preserve": [
+      "background"
+    ]
+  },
+  {
+    "seed": 99003,
+    "prompt_id": "c2e074ab-2a65-43fd-b67e-827fbabcf668",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"},\n    \"image2\": {\"role\": \"material_style_reference\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"woman's leather dress\",\n      \"region\": \"entire image\",\n      \"operation\": \"replace\",\n      \"reference_slots\": [\"image2\"]\n    }\n  ],\n  \"preserve\": [\n    \"background\"\n  ]\n   ,\"user_instruction\": \"Change the color of the woman's leather dress to match the color shown in the reference image.\"\n     , \"prompt\": \"change_color_of_woman_dress_to_match_reference_image\"\n}",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "woman's leather dress",
+        "entire image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": false,
+    "preserve": [
+      "background"
+    ]
+  },
+  {
+    "seed": 99004,
+    "prompt_id": "76780f98-362f-4e6d-8d01-1d2994be5808",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"},\n    \"image2\": {\"role\": \"material_style_reference\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"woman's leather dress\",\n      \"region\": \"entire image\",\n      \"operation\": \"replace\",\n      \"reference_slots\": [\"image2\"]\n    }\n  ],\n  \"preserve\": [\n    \"background\"\n  ]\n   ,\"user_instruction\": \"Change the color of the woman's leather dress to match the color shown in the reference image.\"\n     , \"prompt\": \"change_color_of_woman_dress_to_match_reference_image\"\n}",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "woman's leather dress",
+        "entire image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": false,
+    "preserve": [
+      "background"
+    ]
+  },
+  {
+    "seed": 99005,
+    "prompt_id": "a25f112b-0212-499a-8059-3a543ec1a433",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"},\n    \"image2\": {\"role\": \"material_style_reference\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"woman's leather dress\",\n      \"region\": \"entire image\",\n      \"operation\": \"replace\",\n      \"reference_slots\": [\"image2\"]\n    }\n  ],\n  \"preserve\": [\n    \"background\"\n  ]\n  ,\"user_instruction\":\"Change the color of the woman's leather dress to match the color shown in the reference image.\"\n   , \"prompt\":\"change the color of the woman's leather dress to match the color shown in the reference image.\"}",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "woman's leather dress",
+        "entire image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": false,
+    "preserve": [
+      "background"
+    ]
+  },
+  {
+    "seed": 99006,
+    "prompt_id": "81e18613-ca34-41bf-8fc7-837f7c0f26cc",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"},\n    \"image2\": {\"role\": \"material_style_reference\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"woman's leather dress\",\n      \"region\": \"entire image\",\n      \"operation\": \"replace\",\n      \"reference_slots\": [\"image2\"]\n    }\n  ],\n  \"preserve\": [\n    \"background\"\n  ]\n  \t,\n  \"user_instruction\": \"Change the color of the woman's leather dress to match the color shown in the reference image.\"\n  \t,\n  \"prompt\": \"Replace all instances where a black leather dress is present with an equivalent material and style from Image2, ensuring that it matches its appearance exactly. Preserve everything else as-is\"\n}",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "woman's leather dress",
+        "entire image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": false,
+    "preserve": [
+      "background"
+    ]
+  }
+]

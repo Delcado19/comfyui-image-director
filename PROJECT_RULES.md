@@ -377,6 +377,21 @@ See `tests/router/RESULTS_ab_negative_prompt.md` and
 render-graph change), or a separate analyzer-quality project to fix
 `is_local_region`/placeholder-overuse classification itself.
 
+**Analyzer-quality follow-up (2026-08-05, same Codex thread):** re-tested
+an earlier (2026-08-03), separately-reverted wording+schema-order fix
+(`PROMPT_EXPERIMENT_2026-08-03.md`'s v3) scoped to `reference_count<=1`
+against case 3. Partial improvement only: `edits[0].subject` became
+correctly specific ("woman's leather dress") in 5/5, but `is_local_region`
+and `edits[0].region` stayed wrong (`false`/"entire image") in 5/5 - the
+same cross-field-consistency wall the 2026-08-03 experiment already hit
+for its 3-image case. Not adopted - a half-fixed plan is worse than the
+documented baseline limitation if future code trusts `is_local_region` as
+a gate. See `tests/router/RESULTS_analyzer_field_reliability_v3.md`.
+Codex's suggested next step: a deterministic post-processor/validator
+(reject/re-request when `subject` is specific but `is_local_region`/
+`region` contradict it) rather than more prompt wording - not started,
+needs its own decision before implementation.
+
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
 The structured edit-plan schema is defined: `docs/schema/edit_plan.schema.json`
