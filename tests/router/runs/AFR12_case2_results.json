@@ -1,0 +1,92 @@
+[
+  {
+    "case": "case2",
+    "seed": 99002,
+    "prompt_id": "ee9569df-1f27-4157-8888-efd0e3b9a87f",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": false,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "restyle"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Restyle the entire photo as a vintage 1970s film photograph with warm faded colors and visible film grain.\",\n  \"prompt\": \"vintage 1970s film photograph, warm faded colors, visible film grain\"\n  ,\"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\n      \"role\": \"source\"\n    }\n  },\n  \"edits\": [\n    {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"restyle\"}\n  ],\n  \"preserve\": [\"background elements\"]\n}"
+  },
+  {
+    "case": "case2",
+    "seed": 99003,
+    "prompt_id": "8732dfca-9527-45f7-a5eb-1cf49698e242",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": false,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "restyle"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Restyle the entire photo as a vintage 1970s film photograph with warm faded colors and visible film grain.\",\n  \"prompt\": \"vintage 1970s film photograph, warm faded colors, visible film grain\"\n  ,\"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\n      \"role\": \"source\"\n    }\n  },\n  \"edits\": [\n    {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"restyle\"}\n  ],\n  \"preserve\": [\"background elements\"]\n}"
+  },
+  {
+    "case": "case2",
+    "seed": 99004,
+    "prompt_id": "df29e35b-fb12-40d8-84f2-e25a16216386",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": false,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "restyle"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Restyle the entire photo as a vintage 1970s film photograph with warm faded colors and visible film grain.\",\n  \"prompt\": \"vintage 1970s film photograph, warm faded colors, visible film grain\"\n  , \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\n      \"role\": \"source\"\n    }\n  },\n  \"edits\": [\n    {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"restyle\"}\n  ],\n  \"preserve\": [\"background elements\"]\n}"
+  },
+  {
+    "case": "case2",
+    "seed": 99005,
+    "prompt_id": "dfb1a1a8-e022-49fe-9edc-ffc80cf8adae",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": false,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "restyle"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Restyle the entire photo as a vintage 1970s film photograph with warm faded colors and visible film grain.\",\n  \"prompt\": \"vintage 1970s film photograph, warm faded colors, visible film grain\"\n  ,\"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\n      \"role\": \"source\"\n    }\n  },\n  \"edits\": [\n    {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"restyle\"}\n  ],\n  \"preserve\": [\"background elements\"]\n}"
+  },
+  {
+    "case": "case2",
+    "seed": 99006,
+    "prompt_id": "5ae9dfcf-ae9f-48f4-b303-5d278ce47893",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": false,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "restyle"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Restyle the entire photo as a vintage 1970s film photograph with warm faded colors and visible film grain.\",\n  \"prompt\": \"vintage 1970s film photograph, warm faded colors, visible film grain\"\n  ,\"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\n      \"role\": \"source\"\n    }\n  },\n  \"edits\": [\n    {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"restyle\"}\n  ],\n  \"preserve\": [\"background elements\"]\n}"
+  }
+]

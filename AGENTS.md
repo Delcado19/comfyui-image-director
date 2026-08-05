@@ -415,7 +415,14 @@ without an actual controlled runtime test.
   gate would be premature (also awkward given ComfyUI graphs are DAGs with
   no native retry construct). See
   `tests/router/RESULTS_consistency_check.md`,
-  `tests/router/test_consistency_check.py`.
+  `tests/router/test_consistency_check.py`. **Repeat-seed pass for cases 1/2
+  (2026-08-05, analyzer-JSON-level, n=5, no render):** case 2 (global
+  restyle) fully stable/correct 5/5; case 1's (local removal)
+  `is_local_region` stable/correct 5/5, but its `edits[].subject`/`.region`
+  placeholder-overuse is confirmed systematic (5/5), not an n=1 fluke -
+  harmless for rendering (unconsumed fields), real analyzer-quality issue.
+  See `tests/router/RESULTS_repeat_seed_cases12.md`. No render-level
+  repeat-seed pass done yet.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

@@ -1,0 +1,92 @@
+[
+  {
+    "case": "case1",
+    "seed": 99002,
+    "prompt_id": "7f6f3fca-5990-48e2-bb4d-d71f204676bd",
+    "task": "edit",
+    "is_local_region": true,
+    "expected_is_local_region": true,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "remove"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Remove the beer bottle standing on top of the trash can.\",\n  \"prompt\": \"- Remove a green Beck's beer bottle from atop an open blue trash bin, keeping everything else in place and unchanged.\"\n  , \"is_local_region\": true,\n  \"images\": {\n    \"image1\": {\n      \"role\": \"source\"\n    }\n  },\n  \"edits\": [\n    {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"remove\"}\n  ],\n  \"preserve\": [\"woman\", \"her clothing\"]\n}"
+  },
+  {
+    "case": "case1",
+    "seed": 99003,
+    "prompt_id": "270b2fdf-9751-4967-95ae-424bc900d5b3",
+    "task": "edit",
+    "is_local_region": true,
+    "expected_is_local_region": true,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "remove"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Remove the beer bottle standing on top of the trash can.\",\n  \"prompt\": \"- Remove a green Beck's beer bottle from atop the blue trash bin behind and to the left of the woman in black leather attire, ensuring no other elements are altered or removed. Preserve all background scenery including buildings, trees, road signs, and street furniture as they appear currently.\",\n\n  \"is_local_region\": true,\n  \"images\": {\n    \"image1\": {\n      \"role\": \"source\"\n    }\n  },\n  \"edits\": [\n    {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"remove\"}\n  ],\n  \"preserve\": [\"woman in black leather attire and her clothing\"]\n}"
+  },
+  {
+    "case": "case1",
+    "seed": 99004,
+    "prompt_id": "8003f7e4-ab8c-4f91-a6c3-c240f89b4b78",
+    "task": "edit",
+    "is_local_region": true,
+    "expected_is_local_region": true,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "remove"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Remove the beer bottle standing on top of the trash can.\",\n  \"prompt\": \"- Remove a green Beck's beer bottle from atop the blue trash bin behind you.\\n- Keep everything else in this scene unchanged, including your appearance and surroundings.\",\n\n\"is_local_region\": true,\n\"images\": {\n    \"image1\": {\n        \"role\": \"source\"\n    }\n}\n  ,\"edits\": [\n      {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"remove\"}\n   ]\n  , \"preserve\": [\"woman\", \"her clothing\"]\n}"
+  },
+  {
+    "case": "case1",
+    "seed": 99005,
+    "prompt_id": "030a1174-3a6a-411e-84a7-9dfed90efb5d",
+    "task": "edit",
+    "is_local_region": true,
+    "expected_is_local_region": true,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "remove"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Remove the beer bottle standing on top of the trash can.\",\n  \"prompt\": \"- Remove a green Beck's beer bottle from atop an overflowing blue trash bin, keeping everything else in its original state.\"\n  , \"is_local_region\": true,\n  \"images\": {\n    \"image1\": {\n      \"role\": \"source\"\n    }\n  },\n  \"edits\": [\n    {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"remove\"}\n  ],\n  \"preserve\": [\"woman\", \"her clothing\"]\n}"
+  },
+  {
+    "case": "case1",
+    "seed": 99006,
+    "prompt_id": "70b2ea6b-492b-449e-9c24-3b20105072f4",
+    "task": "edit",
+    "is_local_region": true,
+    "expected_is_local_region": true,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "remove"
+      }
+    ],
+    "structural_errors": [],
+    "consistency_errors": [],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Remove the beer bottle standing on top of the trash can.\",\n  \"prompt\": \"- Remove a green Beck's beer bottle from atop a blue trash bin behind and to the left of the woman in black leather clothing, keeping everything else unchanged.\"\n  , \"is_local_region\": true,\n  \"images\": {\n    \"image1\": {\n      \"role\": \"source\"\n    }\n  },\n  \"edits\": [\n    {\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"remove\"}\n  ]\n  ,\"preserve\": [\"woman in black leather clothing\"]\n}"
+  }
+]

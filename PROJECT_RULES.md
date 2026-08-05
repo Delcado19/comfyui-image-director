@@ -292,7 +292,15 @@ analyzer loader itself:
   "V1 task router" section below) - what's still missing: a repeat-seed
   reliability pass (the multi-reference back-to-back VRAM margin is now
   measured twice, 196/463 MiB free - see the mandatory safety rules below),
-  and any plan/content-quality guarantee
+  and any plan/content-quality guarantee. **Partial repeat-seed pass done
+  (2026-08-05, analyzer-JSON-level only, n=5):** cases 1 (local removal)
+  and 2 (global restyle) re-ran at n=5 - case 2 fully stable/correct 5/5;
+  case 1's `is_local_region` stable/correct 5/5, but its `edits[].subject`/
+  `.region` placeholder-overuse bug is confirmed systematic (5/5), not an
+  n=1 fluke - harmless for rendering (fields not consumed), but a real,
+  reproducible analyzer-quality issue. No render-level (`KSampler`)
+  repeat-seed pass done yet - see
+  `tests/router/RESULTS_repeat_seed_cases12.md`.
 - visual acceptance tests on real photos - a first n=1x3 look is done (see
   "Plan/content quality on a real photo" below,
   `tests/router/RESULTS_content_quality.md`) - local edit and global

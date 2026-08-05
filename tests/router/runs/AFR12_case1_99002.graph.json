@@ -1,0 +1,41 @@
+{
+  "prompt": {
+    "src": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "IMG_7148.jpg"
+      }
+    },
+    "analyzer": {
+      "class_type": "QwenVLStructuredGGUF",
+      "inputs": {
+        "model_path": "G:\\ComfyUI-Easy-Install\\ComfyUI\\models\\llm\\GGUF\\huihui-ai\\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\\Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf",
+        "mmproj_path": "G:\\ComfyUI-Easy-Install\\ComfyUI\\models\\llm\\GGUF\\huihui-ai\\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\\Qwen2.5-VL-7B-Instruct-abliterated.mmproj-f16.gguf",
+        "prompt": "You are creating a structured plan for an image generation/editing pipeline. schema_version is always \"1.0\". If this is a text-to-image request unrelated to the attached image(s), use task=\"generate\" - ignore the attached image(s) entirely in that case. If the request modifies the attached image, use task=\"edit\": set is_local_region to true only if just one specific subject/region should change and everything else must stay the same (false if the whole image is being transformed/restyled), list \"images\" with image1 (role \"source\"), describe the needed edit(s), and list what must be preserved. For edits[]: only list things that actually change; use subject \"entire image\"/region \"full image\" only when no more specific subject exists; the prompt field must be one clean instruction for an image model, no markdown or commentary.\n\nInstruction: Remove the beer bottle standing on top of the trash can. Keep the woman, her clothing, and everything else in the scene unchanged.",
+        "json_schema": "{\"oneOf\": [{\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"schema_version\", \"task\", \"user_instruction\", \"prompt\"], \"properties\": {\"schema_version\": {\"const\": \"1.0\"}, \"task\": {\"const\": \"generate\"}, \"user_instruction\": {\"type\": \"string\", \"minLength\": 1}, \"prompt\": {\"type\": \"string\", \"minLength\": 1}}}, {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"schema_version\", \"task\", \"user_instruction\", \"prompt\", \"is_local_region\", \"images\", \"edits\", \"preserve\"], \"properties\": {\"schema_version\": {\"const\": \"1.0\"}, \"task\": {\"const\": \"edit\"}, \"user_instruction\": {\"type\": \"string\", \"minLength\": 1}, \"prompt\": {\"type\": \"string\", \"minLength\": 1}, \"is_local_region\": {\"type\": \"boolean\"}, \"images\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"image1\"], \"properties\": {\"image1\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"role\"], \"properties\": {\"role\": {\"const\": \"source\"}}}}}, \"edits\": {\"type\": \"array\", \"minItems\": 1, \"items\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"subject\", \"region\", \"operation\"], \"properties\": {\"subject\": {\"type\": \"string\", \"minLength\": 1}, \"region\": {\"type\": \"string\", \"minLength\": 1}, \"operation\": {\"enum\": [\"add\", \"adjust\", \"remove\", \"replace\", \"restyle\"]}}}}, \"preserve\": {\"type\": \"array\", \"minItems\": 1, \"items\": {\"type\": \"string\", \"minLength\": 1}}}}]}",
+        "max_tokens": 512,
+        "temperature": 0.1,
+        "top_p": 0.9,
+        "repetition_penalty": 1.2,
+        "seed": 99002,
+        "ctx": 8192,
+        "gpu_layers": -1,
+        "keep_model_loaded": false,
+        "free_vram_before_load": true,
+        "image": [
+          "src",
+          0
+        ]
+      }
+    },
+    "plan_preview": {
+      "class_type": "PreviewAny",
+      "inputs": {
+        "source": [
+          "analyzer",
+          0
+        ]
+      }
+    }
+  }
+}
