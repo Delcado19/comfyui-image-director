@@ -470,7 +470,19 @@ when text couldn't name it. Conclusion (Codex): "demonstrates strong
 text-driven local editing, but does not demonstrate image-based
 color/material transfer from the reference image, which is the project's
 harder requirement." Closed out for this exact `ReferenceLatent` setup -
-not adopted, not a router candidate as-is. See
+not adopted, not a router candidate as-is. **Confirmed with a real
+photographic reference too (2026-08-05):** re-ran the no-color-name test
+with a proper studio product-shot reference (red leather jumpsuit,
+neutral background, sourced from ComfyUI's input dir) instead of the flat
+swatch, ruling out "bad test fixture" as an explanation - dress stayed
+black in both variants again. Flux.2 Dev's `ReferenceLatent` wiring is
+fully closed out. Also found (2026-08-05) a separate, months-long VTON
+sub-project (`G:\ComfyUI-Easy-Install\ComfyUI\user\default\workflows\
+VTON`) that independently reached closely related conclusions for this
+same problem class (Qwen weight-boost hits the same magnitude-not-
+locality wall, the QwenVL text-detour has a documented structural
+ceiling) - see memory `project_vton_sibling_history` for reusable prior
+findings before re-deriving anything. See
 `tests/router/RESULTS_flux2dev_capability.md`.
 
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node

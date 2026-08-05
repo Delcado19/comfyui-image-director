@@ -83,6 +83,24 @@ Referenzbild übernommen.
 > not demonstrate image-based color/material transfer from the reference
 > image, which is the project's harder requirement.
 
+## Test 4 (Bestätigung): fotografische statt Flat-Color-Referenz, kein Farbwort im Prompt
+
+Einwand aus einem separaten VTON-Schwesterprojekt
+(`G:\ComfyUI-Easy-Install\ComfyUI\user\default\workflows\VTON`, siehe
+[[project_vton_sibling_history]]): die meisten Referenz-Mechanismen
+erwarten ein Produktfoto mit neutralem Hintergrund, keinen abstrakten
+Farbfleck. Test 3 wiederholt mit einem echten Foto aus dem ComfyUI-
+Input-Ordner (`new-jitrois-kill-jumpsuit-red-stretch-leather-woman-
+attitude.png` - roter Stretch-Leder-Overall, sauberer Studio-Hintergrund),
+gleicher Seed, gleicher Prompt ohne Farb-/Materialnennung, mit/ohne
+Referenz.
+
+**Ergebnis: Kleid bleibt wieder in BEIDEN Varianten vollständig
+schwarz.** Identisch zum Flat-Swatch-Ergebnis. Das entkräftet den Einwand
+"vielleicht war nur das Testbild ungeeignet" - auch mit einem sauberen,
+fotografischen Produktbild überträgt dieser `ReferenceLatent`-Aufbau keine
+Bildinformation, wenn der Prompt das Ziel nicht benennt.
+
 ## Fazit
 
 **Bestätigt:** Flux.2 Dev löst - zumindest in diesem Setup - das
@@ -90,11 +108,24 @@ Lokalitätsproblem, an dem Qwen Image Edit 2511 in dieser gesamten Session
 wiederholt gescheitert ist, sofern der Text-Prompt das Zielergebnis
 explizit benennt.
 
-**Nicht bestätigt, sondern widerlegt für diesen konkreten Aufbau:** dass
-Flux.2 Dev Bildinformation überträgt, die der Text nicht ausdrücken kann -
-genau die Fähigkeit, die dieses Projekt für Referenzbild-Rollen
-(`garment_reference`, `material_style_reference` etc.) eigentlich braucht.
-Wenn der Prompt das Ziel nicht benennt, bleibt die Referenz wirkungslos.
+**Widerlegt, mit zwei unabhängigen Referenzbild-Typen (Flat-Swatch UND
+echtes Produktfoto):** dass Flux.2 Dev Bildinformation überträgt, die der
+Text nicht ausdrücken kann - genau die Fähigkeit, die dieses Projekt für
+Referenzbild-Rollen (`garment_reference`, `material_style_reference` etc.)
+eigentlich braucht. Wenn der Prompt das Ziel nicht benennt, bleibt die
+Referenz in diesem `ReferenceLatent`-Aufbau wirkungslos - unabhängig davon,
+ob die Referenz ein abstraktes Farbfeld oder ein sauberes fotografisches
+Produktbild ist. Der "vielleicht war nur das Testbild ungeeignet"-Einwand
+ist damit ausgeräumt.
+
+Codex' finale Zusammenfassung: "Flux.2 Dev is a useful locality datapoint
+but not a solved reference-transfer path. [...] this Flux.2 Dev
+`ReferenceLatent` graph does not demonstrate genuine image-based
+garment/material transfer; it only demonstrates strong text-driven local
+editing." Für diese Graph-Verdrahtung gibt es keinen offensichtlichen
+"Stärke"-Hebel wie beim Qwen-Attention-Patch - weiteres Herumprobieren an
+Guidance-Knoten wäre wieder empirisches Herumtasten ohne Mechanismus.
+**Vollständig abgeschlossen, nicht weiterverfolgt.**
 
 Damit ist dieser konkrete `ReferenceLatent`-Aufbau für Flux.2 Dev
 **abgeschlossen, nicht weiterverfolgt** (Codex: "No more cheap test is
@@ -104,13 +135,16 @@ dieser Session (Fall 3 nutzte selbst bei Qwen nur eine Farbnennung im
 Prompt) - aber dieser Test zeigt, dass Flux.2 Dev diese Lücke ebenfalls
 nicht automatisch schließt.
 
-**Verbleibende, nicht getestete Wege** (strukturell, laut Codex):
-- Masking/Region-Conditioning (mit Qwen oder Flux) - weiterhin der einzige
-  bewiesene Weg zur Lokalität ohne Text-Abhängigkeit.
-- Ein anderer, tatsächlich referenz-fähiger Modellzweig/Mechanismus (nicht
-  näher spezifiziert, nicht getestet).
-- Fotografische/materialbasierte Referenz statt Flat-Color-Swatch - als
-  eigenständiger Charakterisierungstest, nicht als Fix-Behauptung.
+**Empfohlener nächster Schritt (Codex, nach Test 4):** SAM3-als-
+Attention-Hint-Patch auf dem Qwen-Pfad (siehe `RESULTS_ref_weight.md`) -
+Begründung: Qwen konsumiert das Referenzbild nachweislich (reagiert
+darauf), sein Problem ist Routing/Lokalität. Flux.2 Dev hat das
+umgekehrte Problem: Lokalität funktioniert, aber die Referenz wird in
+diesem Aufbau gar nicht konsumiert. Ein Schwesterprojekt
+([[project_vton_sibling_history]]) hat dieselbe Problemklasse bereits
+2+ Monate bearbeitet und keine generische Architektur gefunden -
+Erwartungshaltung entsprechend gedämpft: realistisches Nahziel ist ein
+einzelner kontrollierter Nachweis, keine vollständige Lösung.
 
 **Umfang/Scope-Hinweis:** Dies ist ein Fähigkeits-Smoke-Test auf einem
 komplett anderen Modellzweig (eigene UNet/CLIP/VAE/Sampler-Kette), keine

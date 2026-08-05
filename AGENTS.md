@@ -459,7 +459,13 @@ without an actual controlled runtime test.
   Flux.2 Dev did not pick up color from the image alone. Conclusion:
   strong text-driven local editing, but image-based reference transfer NOT
   demonstrated - the project's actual harder requirement. Closed out for
-  this `ReferenceLatent` setup, not adopted. See
+  this `ReferenceLatent` setup, not adopted. **Confirmed with a real
+  photographic reference too (2026-08-05, from ComfyUI's input dir):**
+  same no-color-name test, red leather jumpsuit product shot instead of
+  the flat swatch - dress stayed black in both variants again, ruling out
+  "bad test fixture." Fully closed out. Also found a separate VTON
+  sub-project with 2+ months of closely related prior findings - see
+  memory `project_vton_sibling_history`. See
   `tests/router/RESULTS_flux2dev_capability.md`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
