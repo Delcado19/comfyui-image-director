@@ -567,8 +567,22 @@ harmful earlier this session; with bleeding now structurally impossible,
 that cautious phrasing is no longer needed. Next test (not yet run):
 simplified prompt without the origin-color anchor or "background" word -
 "Change only the masked dress to match the blue color and material of
-Reference Image #2. Keep everything outside the mask unchanged." See
-`tests/router/RESULTS_masking_test1.md`.
+Reference Image #2. Keep everything outside the mask unchanged."
+
+**That next test WAS run the same night and SUCCEEDED.** Same graph/mask/
+seed, simplified mask-aware prompt (no origin-color anchor, no
+"background"): the dress turned blue with the reference's material
+(smooth/satin, studs gone - a real material change, not just color),
+scene stayed pixel-identical outside the mask. **First successful
+reference-based local color/material transfer this entire session, with
+zero bleeding.** Minor boundary artifacts (thin rim of the original dress
+visible at the sides below the hip - mask grow/blur not yet applied,
+deliberately raw first test). Codex: "feasibility proof solved, polish
+open" - don't overclaim: n=1, this exact source/reference/mask only,
+boundary artifacts unresolved, no router integration yet (the analyzer
+would need to build a mask-aware prompt, not reuse its free `prompt`
+text verbatim, and SAM3 mask generation isn't wired into the router
+graph). See `tests/router/RESULTS_masking_test1.md`.
 
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 

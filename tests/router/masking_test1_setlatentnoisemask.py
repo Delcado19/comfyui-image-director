@@ -32,14 +32,19 @@ PROMPT_WITH_BACKGROUND = (
     "from Reference Image #2, which appears as a solid blue background. The rest should remain unchanged."
 )
 
+PROMPT_MASKED_SIMPLE = (
+    "Change only the masked dress to match the blue color and material of Reference Image #2. "
+    "Keep everything outside the mask unchanged."
+)
+
 SAM3_PROMPT = "the woman's dress"
 
 
-def build(seed: int, use_mask: bool) -> dict:
+def build(seed: int, use_mask: bool, prompt_text: str = PROMPT_WITH_BACKGROUND) -> dict:
     graph = {
         "src": {"class_type": "LoadImage", "inputs": {"image": "IMG_7148.jpg"}},
         "ref2": {"class_type": "LoadImage", "inputs": {"image": "imgdir_test_ref2.png"}},
-        "prompt_literal": {"class_type": "PrimitiveString", "inputs": {"value": PROMPT_WITH_BACKGROUND}},
+        "prompt_literal": {"class_type": "PrimitiveString", "inputs": {"value": prompt_text}},
         "neg_str": {"class_type": "StringSubstring", "inputs": {"string": ["prompt_literal", 0], "start": 0, "end": 0}},
 
         "edit_unet": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "Qwen Image Edit 2511\\qwen-image-edit-2511-Q4_K_M.gguf"}},
@@ -95,9 +100,10 @@ def build(seed: int, use_mask: bool) -> dict:
 
 
 if __name__ == "__main__":
-    variant = sys.argv[1]  # "baseline" or "masked"
+    variant = sys.argv[1]  # "baseline", "masked", or "masked_simpleprompt"
     seed = int(sys.argv[2]) if len(sys.argv) > 2 else 424242
-    graph = build(seed, use_mask=(variant == "masked"))
+    prompt_text = PROMPT_MASKED_SIMPLE if variant == "masked_simpleprompt" else PROMPT_WITH_BACKGROUND
+    graph = build(seed, use_mask=(variant != "baseline"), prompt_text=prompt_text)
     with open(f"tests/router/runs/AB_masktest1_{variant}.graph.json", "w", encoding="utf-8") as f:
         json.dump(graph, f, indent=2, ensure_ascii=False)
     pid = submit(graph)

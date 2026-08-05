@@ -55,9 +55,52 @@ Gleicher Graph, gleiche Maske, gleicher Seed. Falls das Kleid weiterhin
 schwarz bleibt: nächster Hebel ist nicht mehr der Prompt, sondern die
 Sampling-Stärke (mehr Steps oder andere CFG).
 
+## Test 2 (entscheidend): vereinfachter, maskenbewusster Prompt
+
+Gleicher Graph, gleiche Maske, gleicher Seed (424242). Prompt ersetzt
+durch Codex' Vorschlag - ohne Ausgangsfarben-Anker, ohne "background":
+
+> "Change only the masked dress to match the blue color and material of
+> Reference Image #2. Keep everything outside the mask unchanged."
+
+**Ergebnis: Erfolg.** Das Kleid ist jetzt blau, Material glatt/satiniert
+entsprechend der Referenz, alle Nieten des Original-Kleids verschwunden
+(Materialwechsel, nicht nur Farbwechsel - wie im Prompt gefordert). Der
+Rest der Szene bleibt weiterhin pixelgenau unverändert (Himmel, Gebäude,
+Straße, Mülleimer, Bierflasche, Gesicht, Pose, Leggings, Stiefel, Tasche).
+**Die erste erfolgreiche referenzbasierte lokale Farb-/Material-
+übertragung dieser gesamten Session, ohne jedes Bleeding.**
+
+Kleinere Randartefakte sichtbar: ein dünner Saum mit Resten des
+Original-Kleids an den Seiten unterhalb der Hüfte, vermutlich weil die
+SAM3-Maske dort etwas zu eng geschnitten war (kein Grow/Blur angewendet -
+bewusst roher erster Test laut Codex: "first run should prove the
+mechanism, not polish it").
+
+## Codex' Bewertung (Zitat)
+
+> Was jetzt belegt ist: SAM3-Maske + `SetLatentNoiseMask` löst die
+> Lokalität hart. Vereinfachter maskenbezogener Prompt aktiviert die
+> Referenzübertragung innerhalb der Maske. Szene außerhalb bleibt
+> unverändert. Qwen kann den Referenzlook lokal übertragen, wenn die
+> Region sampler-seitig begrenzt wird.
+>
+> Nicht überclaimen: n=1, nur diese Quelle/Referenz/Maskenregion,
+> Randartefakte noch offen, noch keine allgemeine Router-Integration,
+> Prompt muss mask-aware gebaut werden, nicht der alte Analyzer-`prompt`
+> verbatim.
+
 ## Fazit
 
-Erster echter, strukturell wirksamer Fortschritt dieser gesamten Session
-für Fall 3: das Lokalitätsproblem (Bleeding) ist gelöst. Die verbleibende
-offene Frage ist reine Prompt-/Sampling-Feinabstimmung innerhalb der jetzt
-korrekt isolierten Region, kein Architektur- oder Mechanismus-Problem mehr.
+**Machbarkeitsnachweis für Fall 3 (referenzbasiertes lokales Umfärben)
+erbracht - als gelöst zu betrachten, mit offenem Feinschliff.** Der
+Kernmechanismus (SAM3-Maske → `SetLatentNoiseMask` → maskenbewusster
+Prompt) funktioniert, ohne jedes Bleeding, mit echter Referenzbild-
+basierter Material-/Farbübertragung. Nicht überclaimen: nur n=1, nur diese
+eine Quell-/Referenzbild-/Maskenkombination getestet, Randartefakte noch
+ungelöst (Mask-Grow/Blur als nächster Feinschliff-Schritt, nicht
+angewendet), und es gibt noch keine Integration in den Router - der
+Analyzer müsste den Prompt maskenbewusst bauen (nicht die bisherige freie
+Prosa), und die SAM3-Maskenerzeugung müsste in den Router-Graphen
+eingebaut werden. Diese Integrationsarbeit ist ein eigenständiger,
+nicht-trivialer nächster Schritt, kein einfacher Rollout.

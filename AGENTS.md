@@ -514,9 +514,16 @@ without an actual controlled runtime test.
   outside the SAM3 mask every step. Result: zero bleeding, background
   pixel-identical to source (first fully clean background all session),
   but dress inside the mask stayed black - no color transfer yet. Codex's
-  next test (not yet run): drop the "black leather dress"/"background"
-  prompt anchors now that bleeding is structurally impossible. See
-  `tests/router/RESULTS_masking_test1.md`.
+  next test - drop the "black leather dress"/"background" prompt anchors
+  now that bleeding is structurally impossible - **was run same night and
+  SUCCEEDED**: dress turned blue with the reference's material (smooth,
+  studs gone), scene pixel-identical outside the mask. First successful
+  reference-based local color/material transfer this session, zero
+  bleeding. Minor boundary artifacts (thin original-dress rim at the
+  sides, mask grow/blur not applied yet). Codex: "feasibility proof
+  solved, polish open" - n=1, no router integration yet (analyzer needs a
+  mask-aware prompt builder, SAM3 mask generation isn't wired into the
+  router graph). See `tests/router/RESULTS_masking_test1.md`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
