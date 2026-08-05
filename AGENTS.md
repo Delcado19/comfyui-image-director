@@ -475,6 +475,20 @@ without an actual controlled runtime test.
   target - proceeding on Qwen instead, where reference consumption is
   already proven (`RESULTS_ref_weight.md`). See
   `tests/router/RESULTS_flux2dev_capability.md`.
+- **SAM3-attention-hint spike, Stage 1 (logging-only) PASSED on Qwen
+  (2026-08-05, user approved, no ComfyUI installation changes - custom
+  nodes only):** new `custom_nodes/sam3_attn_probe/` package (dev repo,
+  junction-linked into production, same pattern as
+  `comfyui-qwenvl-structured-gguf`). `QwenBlockPatchLoggerProbe` uses the
+  official `ModelPatcher.set_model_patch_replace()` API to register a
+  `patches_replace["dit"][("double_block", i)]` hook - fires exactly as
+  read from source: `total_blocks=60`, `img` already has source+both
+  references concatenated, `reference_image_num_tokens` gives the source
+  token range directly, cleaner than the originally-planned `attn1_patch`
+  hook (img/txt still separate at block level). See
+  `tests/router/RESULTS_sam3_spike_stage1.md`. Next: Stage 2 (own
+  attention reimplementation, no bias, must reproduce baseline) - not
+  started.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

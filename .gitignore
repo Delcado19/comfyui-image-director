@@ -1,2 +1,3 @@
 __pycache__/
 *.pyc
+custom_nodes/sam3_attn_probe/last_*_log.json

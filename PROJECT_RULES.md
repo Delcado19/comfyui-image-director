@@ -496,6 +496,24 @@ target for the attention-bias spike - proceed on Qwen (reference
 consumption already proven there, see `RESULTS_ref_weight.md`). See
 `tests/router/RESULTS_flux2dev_capability.md`.
 
+**SAM3-attention-hint spike started on Qwen, Stage 1 (logging-only
+block-replace hook) PASSED (2026-08-05, user approved, hard constraint:
+no ComfyUI installation changes, custom-node code only):** new package
+`custom_nodes/sam3_attn_probe/` (dev repo), junction-linked into
+`custom_nodes/` (no admin rights for a real symlink) - same pattern as
+`comfyui-qwenvl-structured-gguf`. `QwenBlockPatchLoggerProbe` registers a
+`patches_replace["dit"][("double_block", i)]` hook via the official
+`ModelPatcher.set_model_patch_replace()` API on a cloned model - confirmed
+firing with the exact contract read from source: `total_blocks=60`,
+`img` (12236 tokens) already has source+both references concatenated,
+`reference_image_num_tokens=[4070, 4096]` gives source-token range
+directly (`[0, 4070)`) without needing the deeper `img_slice` (only set
+inside the attention-processor forward, not visible at block level) -
+actually a cleaner injection point than the originally-planned
+`attn1_patch` hook. See `tests/router/RESULTS_sam3_spike_stage1.md`. Next:
+Stage 2 (own attention reimplementation on this one block, no bias yet,
+must reproduce baseline output) - not started.
+
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
 The structured edit-plan schema is defined: `docs/schema/edit_plan.schema.json`
