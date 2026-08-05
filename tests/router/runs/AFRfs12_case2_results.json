@@ -1,0 +1,50 @@
+[
+  {
+    "case": "case2",
+    "seed": 99002,
+    "prompt_id": "e230f3ca-19d4-4853-a2b8-e9af1d87f4d2",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": false,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "restyle"
+      }
+    ],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"entire image\",\n      \"region\": \"full image\",\n      \"operation\": \"restyle\"\n    }\n  ],\n  \"preserve\": [\"none\"],\n  \"user_instruction\": \"Restyle the entire photo as a vintage 1970s film photograph with warm faded colors and visible film grain.\",\n  \"prompt\": \"Restyle this photo to resemble a classic 1970s film image, featuring warm tones, subtle fading effects, and noticeable film grain.\"\n}"
+  },
+  {
+    "case": "case2",
+    "seed": 99003,
+    "prompt_id": "cdfe61de-9d72-4b6f-8ba0-2f755d80a7f7",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": false,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "restyle"
+      }
+    ],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"entire image\",\n      \"region\": \"full image\",\n      \"operation\": \"restyle\"\n    }\n  ],\n  \"preserve\": [\"none\"],\n  \"user_instruction\": \"Restyle the entire photo as a vintage 1970s film photograph with warm faded colors and visible film grain.\",\n  \"prompt\": \"Restyle this photo to resemble a classic 1970s film image, featuring warm tones, subtle fading effects, and noticeable film grain.\"\n}"
+  },
+  {
+    "case": "case2",
+    "seed": 99004,
+    "prompt_id": "29cc7019-6097-401a-b952-12eda6c2f951",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": false,
+    "edits": [
+      {
+        "subject": "entire image",
+        "region": "full image",
+        "operation": "restyle"
+      }
+    ],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"entire image\",\n      \"region\": \"full image\",\n      \"operation\": \"restyle\"\n    }\n  ],\n  \"preserve\": [\"none\"],\n  \"user_instruction\": \"Restyle the entire photo as a vintage 1970s film photograph with warm faded colors and visible film grain.\",\n  \"prompt\": \"Restyle this photo to resemble a classic 1970s film image, featuring warm tones, faded coloration, and noticeable film grain.\"\n}"
+  }
+]

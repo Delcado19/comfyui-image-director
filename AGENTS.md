@@ -426,7 +426,18 @@ without an actual controlled runtime test.
   fully stable/PASS across all 3 seeds, no variance. The "n=1 per case"
   backlog item is now closed for cases 1/2 (JSON-plan and render level
   both). Case 3 remains the only case with an unresolved visual failure.
-  See `tests/router/RESULTS_repeat_seed_render_cases12.md`.
+  See `tests/router/RESULTS_repeat_seed_render_cases12.md`. **Two more
+  untried candidates from `PROMPT_EXPERIMENT_2026-08-03.md` tested and
+  rejected (2026-08-05):** `temperature=0` (n=1) reproduced the exact same
+  failure as `temperature=0.1` - confirms a stable model mode, not
+  sampling noise. Few-shot example + v3 schema (n=15, case 3):
+  `edits[].subject`/`.region` fixed 15/15, but `is_local_region` only
+  11/15 - and it REGRESSED on case 1 (5/5 -> 1/3) in a same-guidance
+  regression check. No-go on adoption - `is_local_region` is
+  prompt-sensitive/unstable across cases. Prompt/few-shot engineering for
+  this field now considered exhausted; future use needs the diagnostic
+  consistency validator, not more prompting. See
+  `tests/router/RESULTS_analyzer_field_reliability_fewshot.md`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

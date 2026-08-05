@@ -1,0 +1,50 @@
+[
+  {
+    "case": "case1",
+    "seed": 99002,
+    "prompt_id": "5e43565a-e635-4d24-b88c-cadfc7a3dd59",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": true,
+    "edits": [
+      {
+        "subject": "beer bottle on trash can",
+        "region": "trash_can_top",
+        "operation": "remove"
+      }
+    ],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"beer bottle on trash can\",\n      \"region\": \"trash_can_top\",\n      \"operation\": \"remove\"\n    }\n  ],\n  \"preserve\": [\"woman\", \"her clothing\"],\n  \"user_instruction\": \"Remove the beer bottle standing on top of the trash can. Keep the woman and her clothing unchanged.\",\n  \"prompt\": \"Remove the beer bottle from above the trash can.\"\n}"
+  },
+  {
+    "case": "case1",
+    "seed": 99003,
+    "prompt_id": "30ab2b16-7e0d-4d97-ac86-1f33c9c91c47",
+    "task": "edit",
+    "is_local_region": true,
+    "expected_is_local_region": true,
+    "edits": [
+      {
+        "subject": "beer bottle on trash can",
+        "region": "trash_can_top",
+        "operation": "remove"
+      }
+    ],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": true,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"beer bottle on trash can\",\n      \"region\": \"trash_can_top\",\n      \"operation\": \"remove\"\n    }\n  ],\n  \"preserve\": [\"woman\", \"her clothing\"],\n  \"user_instruction\": \"Remove the beer bottle standing on top of the trash can. Keep the woman and her clothing unchanged.\",\n  \"prompt\": \"Remove the beer bottle from above the trash can.\"\n}"
+  },
+  {
+    "case": "case1",
+    "seed": 99004,
+    "prompt_id": "78eb6b25-9a56-4b87-ae0f-5e9382678bb6",
+    "task": "edit",
+    "is_local_region": false,
+    "expected_is_local_region": true,
+    "edits": [
+      {
+        "subject": "beer bottle on trash can",
+        "region": "trash_can_top",
+        "operation": "remove"
+      }
+    ],
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"beer bottle on trash can\",\n      \"region\": \"trash_can_top\",\n      \"operation\": \"remove\"\n    }\n  ],\n  \"preserve\": [\"woman\", \"her clothing\"],\n  \"user_instruction\": \"Remove the beer bottle standing on top of the trash can. Keep the woman and her clothing unchanged.\",\n  \"prompt\": \"Remove the beer bottle from above the trash can.\"\n}"
+  }
+]

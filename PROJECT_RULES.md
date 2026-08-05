@@ -417,6 +417,21 @@ doesn't consume these fields at all yet (no wiring, no correction) - see
 `tests/router/test_consistency_check.py` against the real AFRv3 seed-99002
 sample.
 
+**Two more untried candidates from `PROMPT_EXPERIMENT_2026-08-03.md` tested
+and rejected (2026-08-05):** `temperature=0` (n=1 sanity check) reproduced
+the exact same failure as `temperature=0.1` - confirms the bug is a stable
+model mode, not sampling noise, not a fix. Few-shot example + v3 schema
+(n=15 for case 3): `edits[].subject`/`.region` fixed 15/15, but
+`is_local_region` only 11/15 (~73%) - and a regression check on cases 1/2
+(n=3 each, same guidance) found `is_local_region` REGRESSED on case 1
+(5/5 -> 1/3 correct) even though its subject/region also improved. No-go
+on adoption (Codex): `is_local_region` is prompt-sensitive and unstable
+across cases - a wording that helps one local case can hurt another.
+Prompt/few-shot engineering for this field is now considered exhausted;
+any future use of these fields must go through the diagnostic consistency
+validator, not more prompting. See
+`tests/router/RESULTS_analyzer_field_reliability_fewshot.md`.
+
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
 The structured edit-plan schema is defined: `docs/schema/edit_plan.schema.json`
