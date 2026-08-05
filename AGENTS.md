@@ -407,7 +407,15 @@ without an actual controlled runtime test.
   See `tests/router/RESULTS_analyzer_field_reliability_v3.md`. Next
   candidate: a deterministic post-processor/validator (reject/re-request
   on subject-vs-is_local_region/region contradiction) instead of more
-  wording - not started, needs its own decision.
+  wording - not started, needs its own decision. **Implemented as a
+  diagnostic-only opt-in (2026-08-05):** `edit_plan_schema.py`'s
+  `validate_edit_plan(check_consistency=True)` flags the inconsistency but
+  is not wired into the router - the render path still doesn't consume
+  `is_local_region`/`edits[]` at all, so a production reject/re-request
+  gate would be premature (also awkward given ComfyUI graphs are DAGs with
+  no native retry construct). See
+  `tests/router/RESULTS_consistency_check.md`,
+  `tests/router/test_consistency_check.py`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

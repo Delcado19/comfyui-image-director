@@ -392,6 +392,17 @@ Codex's suggested next step: a deterministic post-processor/validator
 `region` contradict it) rather than more prompt wording - not started,
 needs its own decision before implementation.
 
+**Consistency-check validator implemented (2026-08-05, user-approved,
+diagnostic only):** `image_director/edit_plan_schema.py`'s
+`validate_edit_plan()` gained an opt-in `check_consistency=False` parameter
+(no signature break for existing callers) that flags the exact
+subject-vs-is_local_region/region inconsistency found above. Scoped down
+from a production reject/re-request gate after clarifying the render path
+doesn't consume these fields at all yet (no wiring, no correction) - see
+`tests/router/RESULTS_consistency_check.md`. Self-checked with
+`tests/router/test_consistency_check.py` against the real AFRv3 seed-99002
+sample.
+
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
 The structured edit-plan schema is defined: `docs/schema/edit_plan.schema.json`

@@ -29,6 +29,18 @@ from __future__ import annotations
 import json
 
 OP_ENUM = {"replace", "add", "remove", "adjust", "restyle"}
+# Diagnostic-only (validate_edit_plan's check_consistency=True), not a
+# rendering gate: build_router_graph.py doesn't consume is_local_region/
+# edits[]/preserve[] at all yet, so these checks can't correct anything
+# today - see comfyui-image-director's
+# tests/router/RESULTS_analyzer_field_reliability_v3.md, joint decision
+# with Codex (thread 019fd14f-0515-7a91-958a-ce162f468ce2) to build this as
+# a reusable detectable-but-not-wired building block, not a premature
+# reject/re-request mechanism (ComfyUI graphs are DAGs with no native
+# retry construct).
+PLACEHOLDER_SUBJECTS = {"entire image"}
+PLACEHOLDER_REGIONS = {"entire image", "full image"}
+LOCAL_ISH_OPS = {"replace", "remove", "adjust"}
 # Ordered to match the original hand-written enum exactly (grammar output
 # order is untested to matter for enums specifically, unlike properties
 # order for objects, but kept identical for full reproducibility).
@@ -171,7 +183,7 @@ def edit_plan_schema(source_image: bool, reference_count: int = 0, *, include_ge
     return {"oneOf": [GENERATE_PLAN, edit_schema]}
 
 
-def validate_edit_plan(raw_text: str, provided_image_slots) -> list:
+def validate_edit_plan(raw_text: str, provided_image_slots, *, check_consistency: bool = False) -> list:
     """Strict json.loads(), no repair. Enforces the same
     additionalProperties:false shape as edit_plan_schema()'s output, plus
     the router-side semantic check JSON Schema cannot express on its own:
@@ -186,6 +198,15 @@ def validate_edit_plan(raw_text: str, provided_image_slots) -> list:
     an expected value - that's case-specific, left to the caller (see
     tests/schema/analyzer-json-structured/check_json_plan.py for an example
     of layering those expectations on top of this).
+
+    check_consistency: opt-in, default False (preserves prior structural-
+    only behavior for existing callers). When True, additionally flags
+    cross-field inconsistencies observed empirically (see
+    tests/router/RESULTS_analyzer_field_reliability_v3.md) where the model
+    names a specific edits[].subject but doesn't propagate that to
+    is_local_region/edits[].region. Diagnostic only - not consumed by
+    build_router_graph.py's render path, so flagging an error here does not
+    change what gets rendered.
     """
     errors = []
     try:
@@ -287,6 +308,27 @@ def validate_edit_plan(raw_text: str, provided_image_slots) -> list:
                                 "violation, the known unenforceable-by-schema gap - includes image1 "
                                 "referencing itself, which is never valid)"
                             )
+
+                if check_consistency:
+                    subject = e.get("subject")
+                    region = e.get("region")
+                    is_specific_subject = isinstance(subject, str) and subject.strip().lower() not in PLACEHOLDER_SUBJECTS
+                    if (
+                        is_specific_subject
+                        and e.get("operation") in LOCAL_ISH_OPS
+                        and isinstance(ref_slots, list) and ref_slots
+                        and plan.get("is_local_region") is False
+                    ):
+                        errors.append(
+                            f"consistency: edit.subject {subject!r} is specific with a local-ish operation "
+                            f"{e.get('operation')!r} and reference_slots {ref_slots!r}, but top-level "
+                            "is_local_region is False"
+                        )
+                    if is_specific_subject and isinstance(region, str) and region.strip().lower() in PLACEHOLDER_REGIONS:
+                        errors.append(
+                            f"consistency: edit.subject {subject!r} is specific but edit.region is a "
+                            f"placeholder {region!r}"
+                        )
         preserve = plan.get("preserve", [])
         if not isinstance(preserve, list) or len(preserve) < 1 or not all(isinstance(p, str) and p.strip() for p in preserve):
             errors.append(f"preserve invalid: {preserve!r}")
