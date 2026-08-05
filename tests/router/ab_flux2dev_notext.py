@@ -26,7 +26,7 @@ PROMPT_NO_COLOR_NAME = (
 )
 
 
-def build(seed: int, with_swatch: bool, ref_image: str = "imgdir_test_ref2.png") -> dict:
+def build(seed: int, with_swatch: bool, ref_image: str = "imgdir_test_ref2.png", ref_method: str | None = None) -> dict:
     graph = {
         "src": {"class_type": "LoadImage", "inputs": {"image": "IMG_7148.jpg"}},
         "src_scale": {"class_type": "ImageScaleToTotalPixels", "inputs": {"image": ["src", 0], "upscale_method": "lanczos", "megapixels": 1, "resolution_steps": 16}},
@@ -53,6 +53,9 @@ def build(seed: int, with_swatch: bool, ref_image: str = "imgdir_test_ref2.png")
         graph["ref2_latent"] = {"class_type": "VAEEncode", "inputs": {"pixels": ["ref2", 0], "vae": ["vae", 0]}}
         graph["pos_ref2"] = {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["pos_ref1", 0], "latent": ["ref2_latent", 0]}}
         positive_cond = ["pos_ref2", 0]
+        if ref_method:
+            graph["pos_ref_method"] = {"class_type": "FluxKontextMultiReferenceLatentMethod", "inputs": {"conditioning": positive_cond, "reference_latents_method": ref_method}}
+            positive_cond = ["pos_ref_method", 0]
 
     graph["guider"] = {"class_type": "CFGGuider", "inputs": {"model": ["unet", 0], "positive": positive_cond, "negative": ["neg_ref1", 0], "cfg": 1.2}}
     graph["sample"] = {
@@ -66,8 +69,11 @@ if __name__ == "__main__":
     variant = sys.argv[1]  # "swatch" or "noswatch"
     seed = int(sys.argv[2])
     ref_image = sys.argv[3] if len(sys.argv) > 3 else "imgdir_test_ref2.png"
-    graph = build(seed, with_swatch=(variant == "swatch"), ref_image=ref_image)
+    ref_method = sys.argv[4] if len(sys.argv) > 4 else None  # "index", "index_timestep_zero", "uxo/uno", "offset"
+    graph = build(seed, with_swatch=(variant == "swatch"), ref_image=ref_image, ref_method=ref_method)
     tag = f"{variant}_{seed}" if ref_image == "imgdir_test_ref2.png" else f"{variant}_{seed}_photo"
+    if ref_method:
+        tag += f"_{ref_method.replace('/', '-')}"
     with open(f"tests/router/runs/AB_flux2dev_notext_{tag}.graph.json", "w", encoding="utf-8") as f:
         json.dump(graph, f, indent=2, ensure_ascii=False)
     pid = submit(graph)

@@ -465,7 +465,15 @@ without an actual controlled runtime test.
   the flat swatch - dress stayed black in both variants again, ruling out
   "bad test fixture." Fully closed out. Also found a separate VTON
   sub-project with 2+ months of closely related prior findings - see
-  memory `project_vton_sibling_history`. See
+  memory `project_vton_sibling_history`. **Swept all 4
+  `reference_latents_method` variants too (2026-08-05), via the official
+  `FluxKontextMultiReferenceLatentMethod` core node (no custom code):**
+  `offset`/`index` both reproduce the black-dress negative unchanged;
+  `index_timestep_zero` destroys image identity (different person/scene);
+  `uxo/uno` collapses generation entirely. No chaining mode shows real
+  image-reference transfer. Flux.2 Dev is out as an attention-bias-spike
+  target - proceeding on Qwen instead, where reference consumption is
+  already proven (`RESULTS_ref_weight.md`). See
   `tests/router/RESULTS_flux2dev_capability.md`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s

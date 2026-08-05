@@ -482,7 +482,18 @@ VTON`) that independently reached closely related conclusions for this
 same problem class (Qwen weight-boost hits the same magnitude-not-
 locality wall, the QwenVL text-detour has a documented structural
 ceiling) - see memory `project_vton_sibling_history` for reusable prior
-findings before re-deriving anything. See
+findings before re-deriving anything. **Also swept all 4
+`reference_latents_method` variants (2026-08-05, user question "Flux.2 Dev
+doch besser [als Qwen für den Attention-Patch-Spike]?"):** official core
+node `FluxKontextMultiReferenceLatentMethod` (no custom code), same
+no-color-name test. `offset` (default) and `index` both reproduce the
+black-dress negative result unchanged; `index_timestep_zero` destroys
+image identity entirely (different person/scene generated); `uxo/uno`
+collapses the generation completely (flat noise output). No chaining mode
+shows genuine image-reference transfer, and two of the four are
+independently unusable for this task. This closes out Flux.2 Dev as a
+target for the attention-bias spike - proceed on Qwen (reference
+consumption already proven there, see `RESULTS_ref_weight.md`). See
 `tests/router/RESULTS_flux2dev_capability.md`.
 
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node

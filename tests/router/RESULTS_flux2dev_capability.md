@@ -101,6 +101,35 @@ schwarz.** Identisch zum Flat-Swatch-Ergebnis. Das entkräftet den Einwand
 fotografischen Produktbild überträgt dieser `ReferenceLatent`-Aufbau keine
 Bildinformation, wenn der Prompt das Ziel nicht benennt.
 
+## Test 5: `reference_latents_method`-Sweep (Nutzerfrage: "Flux.2 Dev doch besser?")
+
+Vor dem Start des Qwen-Attention-Bias-Spikes gegengeprüft: verwendet Test 3/4
+den Standardwert (`ref_latents_method` implizit "offset")? Falls ein
+anderer Verkettungsmodus die Referenz tatsächlich als Bildinformationsquelle
+nutzt, wäre Flux.2 Dev doch der bessere Kandidat. Codex bestätigte vorab:
+falls diese Wiederholung negativ bleibt, ist Qwen der sauberere Spike-Kandidat
+(Referenzkonsum dort bereits bewiesen, hier nicht).
+
+Offizieller Core-Node `FluxKontextMultiReferenceLatentMethod`
+(`comfy_extras/nodes_flux.py:153-181`, `is_experimental=True`) bietet
+`reference_latents_method` mit den Optionen `offset` (Default), `index`,
+`uxo/uno`, `index_timestep_zero`. Kein Custom-Code nötig - vor `CFGGuider`
+eingefügt, gleicher Seed (314001), gleicher Prompt ohne Farbwort, gleiche
+Flat-Swatch-Referenz wie Test 3.
+
+| Methode | Ergebnis |
+|---|---|
+| `offset` (Default, = Test 3) | Kleid schwarz, Szene korrekt erhalten |
+| `index` | Kleid schwarz, Szene korrekt erhalten - identisch zum Default |
+| `index_timestep_zero` | **Bildidentität komplett zerstört** (andere Person, andere Szene, anderes Outfit - keine lokale Bearbeitung mehr, sondern Neugenerierung) |
+| `uxo/uno` | **Generierung komplett kollabiert** (flächige Rauschausgabe, keine erkennbare Szene) |
+
+Keine der vier verfügbaren `reference_latents_method`-Varianten zeigt
+echten Bildreferenz-Transfer; zwei davon (`index_timestep_zero`, `uxo/uno`)
+sind für diesen Anwendungsfall zusätzlich strukturell unbrauchbar
+(Identitätsverlust bzw. Totalkollaps). Der "vielleicht war nur der
+Verkettungsmodus falsch"-Einwand ist damit ausgeräumt.
+
 ## Fazit
 
 **Bestätigt:** Flux.2 Dev löst - zumindest in diesem Setup - das
@@ -135,16 +164,20 @@ dieser Session (Fall 3 nutzte selbst bei Qwen nur eine Farbnennung im
 Prompt) - aber dieser Test zeigt, dass Flux.2 Dev diese Lücke ebenfalls
 nicht automatisch schließt.
 
-**Empfohlener nächster Schritt (Codex, nach Test 4):** SAM3-als-
-Attention-Hint-Patch auf dem Qwen-Pfad (siehe `RESULTS_ref_weight.md`) -
-Begründung: Qwen konsumiert das Referenzbild nachweislich (reagiert
+**Empfohlener nächster Schritt (Codex, nach Test 4, bestätigt nach Test 5):**
+SAM3-als-Attention-Hint-Patch auf dem Qwen-Pfad (siehe `RESULTS_ref_weight.md`)
+- Begründung: Qwen konsumiert das Referenzbild nachweislich (reagiert
 darauf), sein Problem ist Routing/Lokalität. Flux.2 Dev hat das
 umgekehrte Problem: Lokalität funktioniert, aber die Referenz wird in
-diesem Aufbau gar nicht konsumiert. Ein Schwesterprojekt
-([[project_vton_sibling_history]]) hat dieselbe Problemklasse bereits
-2+ Monate bearbeitet und keine generische Architektur gefunden -
-Erwartungshaltung entsprechend gedämpft: realistisches Nahziel ist ein
-einzelner kontrollierter Nachweis, keine vollständige Lösung.
+keinem der vier getesteten Verkettungsmodi konsumiert (Test 5). Ein
+Attention-Bias-Patch kann vorhandene Referenz-Attention nur umlenken,
+nicht erzeugen - Flux.2 Dev scheidet damit als Spike-Ziel aus, nicht nur
+als vorläufige, sondern als abschließende Einschätzung für diesen
+Modellzweig. Ein Schwesterprojekt ([[project_vton_sibling_history]]) hat
+dieselbe Problemklasse bereits 2+ Monate bearbeitet und keine generische
+Architektur gefunden - Erwartungshaltung entsprechend gedämpft:
+realistisches Nahziel ist ein einzelner kontrollierter Nachweis, keine
+vollständige Lösung.
 
 **Umfang/Scope-Hinweis:** Dies ist ein Fähigkeits-Smoke-Test auf einem
 komplett anderen Modellzweig (eigene UNet/CLIP/VAE/Sampler-Kette), keine
