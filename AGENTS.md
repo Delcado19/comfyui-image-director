@@ -494,9 +494,20 @@ without an actual controlled runtime test.
   not a permanent monkeypatch (confirmed `ModelPatcher.clone()` shares the
   underlying `nn.Module`, doesn't copy it). Baseline vs. patched render,
   same seed: pixel values bit-exact identical (numpy diff max=0). See
-  `tests/router/RESULTS_sam3_spike_stage2.md`. Next: Stage 3 - real
-  SAM3-mask-derived query-key bias at `optimized_attention_masked`'s
-  `attn_mask` argument - not started.
+  `tests/router/RESULTS_sam3_spike_stage2.md`.
+- **SAM3-attention-hint spike, Stage 3 (real bias) tested, NEGATIVE
+  (2026-08-05):** `QwenSam3AttnBiasProbe` adds a real `[Lq,Lk]`
+  attn_mask bias from a SAM3 dress mask, grid-checked at runtime
+  (4070==4070, exact). Swept 1 block/moderate bias up to 9 blocks/strong
+  inside-only bias (+12, Codex's pre-committed decisive test) - dress
+  stayed completely black in every variant, meeting Codex's stop
+  criterion. An apparent tint reduction in an earlier confounded run
+  (negative outside_bias) disappeared once isolated - global attenuation,
+  not local targeting, same "magnitude not locality" pattern as
+  `RESULTS_ref_weight.md`. See `tests/router/RESULTS_sam3_spike_stage3.md`.
+  **All mechanism-level (non-hard-masking) approaches for case 3 on Qwen
+  are now exhausted**; only hard masking/region-conditioning (real
+  inpainting, not an attention hint) remains untested.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

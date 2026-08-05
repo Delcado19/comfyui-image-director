@@ -522,9 +522,32 @@ mechanism - NOT a permanent monkeypatch of the shared nn.Module, which
 render, same seed: PNG bytes differed (embedded workflow metadata only),
 but pixel values are **bit-exact identical** (numpy diff: max=0, mean=0.0
 across all channels). See `tests/router/RESULTS_sam3_spike_stage2.md`.
-Next: Stage 3 - add a real SAM3-mask-derived query-key bias at the
-`attn_mask` argument of `optimized_attention_masked`, the one line the
-reimplementation exists to modify - not started.
+**Stage 3 (real SAM3-mask-derived query-key bias) tested and NEGATIVE
+(2026-08-05, same session, Codex pre-committed stop criterion):**
+`QwenSam3AttnBiasProbe` adds a real additive `[Lq,Lk]` bias at
+`optimized_attention_masked`'s `attn_mask` argument, derived from a SAM3
+mask ("the woman's dress") on the source image, with a runtime grid
+sanity-check (computed `h_len*w_len` vs. actual `source_tokens` - passed
+exactly, 4070==4070). Swept from 1 block/moderate bias (no visible
+effect) to 9 mid/late blocks/strong bias (+12, no outside suppression) -
+Codex's pre-committed decisive test and stop criterion: "if the dress
+stays black, stop the spike." **Dress stayed completely black in every
+variant.** An earlier 5-block run with a negative `outside_bias` showed a
+weaker scene tint, but the inside-only follow-up (isolating the
+confound) showed that reduction disappears without outside suppression -
+it was global attenuation, not local targeting, confirming the same
+"magnitude not locality" pattern as the earlier weight-scaling test
+(`RESULTS_ref_weight.md`), even with a spatially-precise bias. See
+`tests/router/RESULTS_sam3_spike_stage3.md`.
+
+**All identified mechanism-level (non-hard-masking) approaches for case 3
+on the Qwen Image Edit 2511 path are now exhausted**, and Flux.2 Dev is
+separately ruled out (`RESULTS_flux2dev_capability.md`). Only hard
+masking/region-conditioning (real inpainting with a SAM3 mask as a hard
+constraint in the sample/decode path, not just an attention hint) remains
+untested - explicitly the "sledgehammer" approach the user originally
+wanted to avoid for this non-VTON project, now the only remaining lever
+after every softer alternative failed.
 
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
