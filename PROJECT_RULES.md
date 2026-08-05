@@ -298,9 +298,15 @@ analyzer loader itself:
   case 1's `is_local_region` stable/correct 5/5, but its `edits[].subject`/
   `.region` placeholder-overuse bug is confirmed systematic (5/5), not an
   n=1 fluke - harmless for rendering (fields not consumed), but a real,
-  reproducible analyzer-quality issue. No render-level (`KSampler`)
-  repeat-seed pass done yet - see
-  `tests/router/RESULTS_repeat_seed_cases12.md`.
+  reproducible analyzer-quality issue. **Render-level repeat-seed pass also done
+  (2026-08-05, n=3, full router incl. KSampler):** both cases fully
+  stable/PASS across all 3 seeds - case 1's bottle removal and case 2's
+  vintage restyle both visually consistent, no regression, no variance.
+  The "n=1 per case, no repeat-seed screen" backlog item is now closed for
+  cases 1/2 (both JSON-plan and render level). Case 3 remains the only
+  case with an unresolved visual failure mode. See
+  `tests/router/RESULTS_repeat_seed_cases12.md` and
+  `tests/router/RESULTS_repeat_seed_render_cases12.md`.
 - visual acceptance tests on real photos - a first n=1x3 look is done (see
   "Plan/content quality on a real photo" below,
   `tests/router/RESULTS_content_quality.md`) - local edit and global

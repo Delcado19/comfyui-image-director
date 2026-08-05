@@ -421,8 +421,12 @@ without an actual controlled runtime test.
   `is_local_region` stable/correct 5/5, but its `edits[].subject`/`.region`
   placeholder-overuse is confirmed systematic (5/5), not an n=1 fluke -
   harmless for rendering (unconsumed fields), real analyzer-quality issue.
-  See `tests/router/RESULTS_repeat_seed_cases12.md`. No render-level
-  repeat-seed pass done yet.
+  See `tests/router/RESULTS_repeat_seed_cases12.md`. **Render-level pass
+  also done (2026-08-05, n=3, full router incl. KSampler):** both cases
+  fully stable/PASS across all 3 seeds, no variance. The "n=1 per case"
+  backlog item is now closed for cases 1/2 (JSON-plan and render level
+  both). Case 3 remains the only case with an unresolved visual failure.
+  See `tests/router/RESULTS_repeat_seed_render_cases12.md`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
