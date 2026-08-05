@@ -450,6 +450,17 @@ without an actual controlled runtime test.
   identified non-masking levers for case 3 (Qwen Image Edit path) are now
   exhausted; masking/region-conditioning is the only remaining
   mechanism-level lever. See `tests/router/RESULTS_ref_weight.md`.
+  **Flux.2 Dev tested as an alternative model branch (2026-08-05, user
+  priority: Flux.2 Dev before Klein):** n=3 full-conditioning pass (source
+  + swatch via `ReferenceLatent`, color-naming prompt) - real locality
+  win, no bleed, consistent. But a source-only ablation (same prompt) ALSO
+  recolored the dress, and a decisive no-color-name test (swatch vs. no
+  swatch, same seed) left the dress unchanged in BOTH variants -
+  Flux.2 Dev did not pick up color from the image alone. Conclusion:
+  strong text-driven local editing, but image-based reference transfer NOT
+  demonstrated - the project's actual harder requirement. Closed out for
+  this `ReferenceLatent` setup, not adopted. See
+  `tests/router/RESULTS_flux2dev_capability.md`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into

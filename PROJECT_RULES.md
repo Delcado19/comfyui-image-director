@@ -454,6 +454,25 @@ reference instead of a flat swatch (cheapest, still untried), or a
 different reference-aware model branch (e.g. Flux2/Klein itself). See
 `tests/router/RESULTS_ref_weight.md`.
 
+**Flux.2 Dev branch tested as the "different model branch" alternative
+(2026-08-05, user's explicit priority - Flux.2 Dev before Flux.2 Klein,
+user's judgment that Klein "isn't capable enough"):** three-part test.
+(1) Full conditioning (source + swatch via chained `ReferenceLatent`,
+color-naming prompt), n=3: PASS - dress recolored cleanly, no scene bleed,
+consistent across seeds. A real locality win over Qwen Image Edit 2511.
+(2) Source-only ablation, same color-naming prompt: dress ALSO recolored -
+means the text prompt's color name, not the reference image, likely drove
+most of the effect; image-reference contribution unproven by (1).
+(3) Decisive test: same graph, prompt with NO color/material name at all,
+swatch-conditioned vs. source-only: dress stayed unchanged (black) in
+BOTH variants - Flux.2 Dev did not pick up color info from the image alone
+when text couldn't name it. Conclusion (Codex): "demonstrates strong
+text-driven local editing, but does not demonstrate image-based
+color/material transfer from the reference image, which is the project's
+harder requirement." Closed out for this exact `ReferenceLatent` setup -
+not adopted, not a router candidate as-is. See
+`tests/router/RESULTS_flux2dev_capability.md`.
+
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
 The structured edit-plan schema is defined: `docs/schema/edit_plan.schema.json`
