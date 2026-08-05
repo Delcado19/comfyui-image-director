@@ -12,13 +12,18 @@ anything. This test checks whether a hand-written negative prompt (not yet
 analyzer-generated preserve[] into production before checking negative
 conditioning helps AT ALL for this failure mode) changes the outcome.
 
-Positive prompt held fixed to the "good" literal from the background-word
-A/B test (no "background" clause) to remove that confound. Only the
-negative prompt varies: empty (matches current router behavior) vs.
-hand-written (Codex's suggested list: "background, sky, buildings,
-pavement, environment, skin, hair, pose, face").
+Two phases (results: RESULTS_ab_negative_prompt.md):
+1. Non-regression check: positive prompt held fixed to the "good" literal
+   from the background-word A/B test (no "background" clause). Only the
+   negative prompt varies: empty (matches current router behavior) vs.
+   hand-written (Codex's suggested list: "background, sky, buildings,
+   pavement, environment, skin, hair, pose, face"). Pass condition (Codex):
+   dress recolors AND background does not change.
+2. Rescue test (optional 3rd CLI arg "bad"): positive prompt swapped to the
+   confirmed-bleed wording (RESULTS_ab_background_word.md), same negative
+   variants, to see if a real negative prompt suppresses the bleed the
+   guidance-clause fix (build_router_graph.py, reverted) failed to prevent.
 
-Pass condition (Codex): dress recolors AND background does not change.
 Fail if dress stops changing or the subject visibly degrades.
 """
 import json
@@ -27,19 +32,25 @@ import sys
 sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\lib")
 from comfy_submit import submit, poll_history
 
-POSITIVE_PROMPT = (
+POSITIVE_PROMPT_GOOD = (
     "The woman is wearing a black leather dress that needs to be changed to match the color "
     "from Reference Image #2, which appears as a solid blue. The rest should remain unchanged."
+)
+# Same wording as RESULTS_ab_background_word.md's confirmed-bad variant, for the
+# rescue test: can a real negative prompt suppress the bleed this wording causes?
+POSITIVE_PROMPT_BAD = (
+    "The woman is wearing a black leather dress that needs to be changed to match the color "
+    "from Reference Image #2, which appears as a solid blue background. The rest should remain unchanged."
 )
 NEGATIVE_EMPTY = ""
 NEGATIVE_HANDWRITTEN = "background, sky, buildings, pavement, environment, skin, hair, pose, face"
 
 
-def build(negative_prompt: str, seed: int) -> dict:
+def build(positive_prompt: str, negative_prompt: str, seed: int) -> dict:
     graph = {
         "src": {"class_type": "LoadImage", "inputs": {"image": "IMG_7148.jpg"}},
         "ref2": {"class_type": "LoadImage", "inputs": {"image": "imgdir_test_ref2.png"}},
-        "pos_literal": {"class_type": "PrimitiveString", "inputs": {"value": POSITIVE_PROMPT}},
+        "pos_literal": {"class_type": "PrimitiveString", "inputs": {"value": positive_prompt}},
         "neg_literal": {"class_type": "PrimitiveString", "inputs": {"value": negative_prompt}},
 
         "edit_unet": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "Qwen Image Edit 2511\\qwen-image-edit-2511-Q4_K_M.gguf"}},
@@ -80,11 +91,18 @@ def build(negative_prompt: str, seed: int) -> dict:
 
 
 if __name__ == "__main__":
+    # variant: "empty"|"handwritten" negative. Optional 3rd arg "bad" switches the
+    # positive prompt to the confirmed-bleed wording, for the rescue test Codex
+    # proposed after the first run showed no visible negative-prompt effect on the
+    # already-good positive (thread 019fd14f-0515-7a91-958a-ce162f468ce2).
     variant = sys.argv[1]
     seed = int(sys.argv[2])
+    use_bad_positive = len(sys.argv) > 3 and sys.argv[3] == "bad"
+    positive_prompt = POSITIVE_PROMPT_BAD if use_bad_positive else POSITIVE_PROMPT_GOOD
     negative_prompt = NEGATIVE_EMPTY if variant == "empty" else NEGATIVE_HANDWRITTEN
-    graph = build(negative_prompt, seed)
-    with open(f"tests/router/runs/AB_neg_{variant}.graph.json", "w", encoding="utf-8") as f:
+    run_tag = f"{variant}_bad" if use_bad_positive else variant
+    graph = build(positive_prompt, negative_prompt, seed)
+    with open(f"tests/router/runs/AB_neg_{run_tag}.graph.json", "w", encoding="utf-8") as f:
         json.dump(graph, f, indent=2, ensure_ascii=False)
     pid = submit(graph)
     result = poll_history(pid)

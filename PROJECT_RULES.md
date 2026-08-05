@@ -353,6 +353,22 @@ re-tested visual output was still wrong (differently - a background color
 patch instead of a full tint, dress still unchanged). Reverted, not
 adopted. See `tests/router/RESULTS_ab_background_word.md`.
 
+**Follow-up negative-prompt fix attempted and failed:** `edit_cond_neg` is
+always an empty string in the router (dead weight). Tested whether a
+hand-written negative prompt ("background, sky, buildings, pavement,
+environment, skin, hair, pose, face") could suppress the bleed on the
+confirmed-bad positive wording. It did not: both empty and handwritten
+negative produced an identical failure (dress stayed black/unrecolored,
+entire scene tinted blue). Not adopted. Current status (2026-08-05, per
+joint Claude-Codex review): prompt-level mitigations for this failure mode
+(analyzer guidance, negative prompt) are exhausted for now — a current
+limitation, not a permanent one. Next candidate, not started, requires its
+own decision: deterministic prompt construction from the schema's
+`is_local_region`/`edits[]`/`preserve[]` fields (currently ignored by
+`build_router_graph.py`) instead of free analyzer prose; masking/
+region-conditioning is a larger, costlier alternative. See
+`tests/router/RESULTS_ab_negative_prompt.md`.
+
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
 The structured edit-plan schema is defined: `docs/schema/edit_plan.schema.json`

@@ -373,10 +373,21 @@ without an actual controlled runtime test.
   generalize beyond this one image/prompt pair. **Follow-up fix attempt
   failed:** a `GUIDANCE` clause telling the analyzer to avoid
   "background"/"backdrop" wording did not suppress the word at n=1 and the
-  visual retest still failed (differently); reverted, not adopted - a real
-  mitigation likely needs prompt-construction or masking changes, not more
-  analyzer wording. `is_local_region` misclassification and `"entire
-  image"`/`"full image"` placeholder overuse remain open, unfixed.
+  visual retest still failed (differently); reverted, not adopted. **A
+  second follow-up fix attempt also failed:** a hand-written negative
+  prompt ("background, sky, buildings, pavement, environment, skin, hair,
+  pose, face") wired into the always-empty `edit_cond_neg` did not rescue
+  the bleed on the confirmed-bad positive wording - dress stayed
+  unrecolored, scene tinted blue either way (empty vs. handwritten
+  negative, no visible difference); see
+  `tests/router/RESULTS_ab_negative_prompt.md`. Prompt-level mitigations
+  (analyzer guidance, negative prompt) are considered exhausted for now
+  (2026-08-05, joint Claude-Codex review) - a current limitation, not
+  permanent. Next candidate: deterministic prompt construction from the
+  schema's `is_local_region`/`edits[]`/`preserve[]` fields instead of free
+  analyzer prose; masking/region-conditioning is the costlier alternative.
+  `is_local_region` misclassification and `"entire image"`/`"full image"`
+  placeholder overuse remain open, unfixed.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
