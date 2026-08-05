@@ -362,12 +362,20 @@ negative produced an identical failure (dress stayed black/unrecolored,
 entire scene tinted blue). Not adopted. Current status (2026-08-05, per
 joint Claude-Codex review): prompt-level mitigations for this failure mode
 (analyzer guidance, negative prompt) are exhausted for now — a current
-limitation, not a permanent one. Next candidate, not started, requires its
-own decision: deterministic prompt construction from the schema's
-`is_local_region`/`edits[]`/`preserve[]` fields (currently ignored by
-`build_router_graph.py`) instead of free analyzer prose; masking/
-region-conditioning is a larger, costlier alternative. See
-`tests/router/RESULTS_ab_negative_prompt.md`.
+limitation, not a permanent one. **Deterministic-prompt-construction
+candidate tested and rejected before implementation:** an analyzer-only
+n=5 test (`tests/router/analyzer_field_reliability.py`, no image
+generation) checked whether `is_local_region`/`edits[].subject`/`.region`
+are reliable enough to drive rendering instead of the free `prompt` text.
+They are not - 5/5 samples had `is_local_region: false` (wrong; this is a
+local edit) and `edits[0]` = `{"subject": "entire image", "region": "full
+image"}` (exactly the placeholder overuse the schema module already
+flags), worse than the free `prompt` field (usable in 3/5). Not built.
+See `tests/router/RESULTS_ab_negative_prompt.md` and
+`tests/router/RESULTS_analyzer_field_reliability.md`. Remaining candidates
+(neither started, neither proven): masking/region-conditioning (structural
+render-graph change), or a separate analyzer-quality project to fix
+`is_local_region`/placeholder-overuse classification itself.
 
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 

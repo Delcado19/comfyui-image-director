@@ -1,0 +1,119 @@
+[
+  {
+    "seed": 99002,
+    "prompt_id": "c0488e16-5a76-4730-97b1-d960e4287030",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Change the color of the woman's leather dress to match the color shown in reference image.\",\n  \"prompt\": \"The woman is wearing a black leather dress that needs to be changed to match the color from Reference Image #2, which appears as a solid blue shade. The rest should remain unchanged.\"\n  ,\n   \"is_local_region\": false,\n    \"images\": {\n      \"image1\": {\"role\": \"source\"},\n       \"image2\": {\"role\": \"object_reference\"}\n        },\n         \"edits\": [\n           {\n            \"subject\": \"entire image\",\n             \"region\": \"full image\",\n              \"operation\": \"replace\",\n               \"reference_slots\": [\"image2\"]\n                }\n                 ]\n                  ,\n                   \"preserve\": [\n                    \"description\"\n                    , \"background\"\n                    ]\n}",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "entire image",
+        "full image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": false,
+    "preserve": [
+      "description",
+      "background"
+    ]
+  },
+  {
+    "seed": 99003,
+    "prompt_id": "38189702-a94d-45fc-962a-229a1075249a",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Change the color of the woman's leather dress to match the color shown in reference image.\",\n  \"prompt\": \"The woman is wearing a black leather dress that needs to be changed to match the color from Reference Image #2, which appears as a solid blue background. The rest should remain unchanged.\"\n  ,\n   \"is_local_region\": false,\n    \"images\": {\n        \"image1\": {\"role\": \"source\"},\n         \"image2\": {\"role\": \"object_reference\"}\n          },\n           \"edits\": [\n            {\n                \"subject\": \"entire image\",\n                 \"region\": \"full image\"\n                  , \"operation\": \"replace\", \"reference_slots\": [\"image2\"]\n                   }\n                    ]\n                    ,\n                    \"preserve\": [\n        \"background\",\n         \"environment\",\n          \"pose\",\n           \"expression\",\n            \"accessories\",\n             \"location\"\n              ]\n               }",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "entire image",
+        "full image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": true,
+    "preserve": [
+      "background",
+      "environment",
+      "pose",
+      "expression",
+      "accessories",
+      "location"
+    ]
+  },
+  {
+    "seed": 99004,
+    "prompt_id": "2cbb50ad-237b-4e56-abf5-c8bce264a6ae",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Change the color of the woman's leather dress to match the color shown in reference image.\",\n  \"prompt\": \"The woman is wearing a black leather dress that needs to be changed to match the color from Reference Image #2, which appears as a solid blue background. The rest should remain unchanged.\"\n  ,\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"},\n    \"image2\": {\"role\": \"object_reference\"}\n},\n\"edits\": [\n{\"subject\": \"entire image\", \"region\": \"full image\", \"operation\": \"replace\", \"reference_slots\": [\"image2\"]}\n]\n,\n  \"preserve\": [\n   \"background\",\n   \"environment\"\n ]\n}",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "entire image",
+        "full image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": true,
+    "preserve": [
+      "background",
+      "environment"
+    ]
+  },
+  {
+    "seed": 99005,
+    "prompt_id": "0201e322-be9e-4172-8ebc-27e39490923b",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Change the color of the woman's leather dress to match the color shown in reference image.\",\n  \"prompt\": \"The woman is wearing a black leather dress that needs to be changed to match the color from Reference Image2 (a solid blue).\",\n  \"is_local_region\": false,\n  \"images\": {\n    \"image1\": {\"role\": \"source\"},\n    \"image2\": {\"role\": \"object_reference\"}\n  },\n  \"edits\": [\n    {\n      \"subject\": \"entire image\",\n      \"region\": \"full image\",\n      \"operation\": \"replace\",\n      \"reference_slots\": [\"image2\"]\n    }\n  ],\n  \"preserve\": [\n    \"background\"\n  ]\n}",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "entire image",
+        "full image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": false,
+    "preserve": [
+      "background"
+    ]
+  },
+  {
+    "seed": 99006,
+    "prompt_id": "c4d3777c-ecc5-4f59-95c4-2c3b487b5b0c",
+    "raw": "{\n  \"schema_version\": \"1.0\",\n  \"task\": \"edit\",\n  \"user_instruction\": \"Change the color of the woman's leather dress to match the color shown in reference image.\",\n  \"prompt\": \"The woman is wearing a black leather dress that needs to be changed to match the color from Reference Image #2, which appears as a solid blue shade. The rest should remain unchanged.\"\n  ,\n   \"is_local_region\": false,\n    \"images\": {\n        \"image1\": {\"role\": \"source\"},\n         \"image2\": {\"role\": \"object_reference\"}\n          },\n           \"edits\": [\n                {\n                    \"subject\": \"entire image\",\n                    \"region\": \"full image\"\n                  , \"operation\": \"replace\", \"reference_slots\": [\"image2\"]\n                   }\n            ]\n        ,\n    \"preserve\": [\n         \"background elements and setting of the scene, lighting conditions as they appear in Image #1.\"\n          ]\n}",
+    "task": "edit",
+    "is_local_region": false,
+    "num_edits": 1,
+    "edit_subjects_regions": [
+      [
+        "entire image",
+        "full image",
+        [
+          "image2"
+        ]
+      ]
+    ],
+    "scene_word_in_edit_subject_or_region": true,
+    "prompt_contains_background": false,
+    "preserve": [
+      "background elements and setting of the scene, lighting conditions as they appear in Image #1."
+    ]
+  }
+]

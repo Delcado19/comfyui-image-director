@@ -383,11 +383,20 @@ without an actual controlled runtime test.
   `tests/router/RESULTS_ab_negative_prompt.md`. Prompt-level mitigations
   (analyzer guidance, negative prompt) are considered exhausted for now
   (2026-08-05, joint Claude-Codex review) - a current limitation, not
-  permanent. Next candidate: deterministic prompt construction from the
-  schema's `is_local_region`/`edits[]`/`preserve[]` fields instead of free
-  analyzer prose; masking/region-conditioning is the costlier alternative.
-  `is_local_region` misclassification and `"entire image"`/`"full image"`
-  placeholder overuse remain open, unfixed.
+  permanent. **Deterministic-prompt-construction candidate tested and
+  rejected before implementation:** an analyzer-only n=5 test (no image
+  generation, `tests/router/analyzer_field_reliability.py`) checked
+  whether `is_local_region`/`edits[].subject`/`.region` are reliable
+  enough to build the render prompt from, instead of the free `prompt`
+  field. They are not - `is_local_region` was wrong (`false`) in 5/5, and
+  `edits[0]` was `{"subject": "entire image", "region": "full image"}` in
+  5/5 (the exact placeholder overuse already flagged as an open item),
+  worse than `prompt` (usable in 3/5). Not built - see
+  `tests/router/RESULTS_analyzer_field_reliability.md`. `is_local_region`
+  misclassification and `"entire image"`/`"full image"` placeholder
+  overuse remain open, unfixed; the remaining candidates are
+  masking/region-conditioning or a dedicated analyzer-quality fix for
+  these two fields, neither started.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
