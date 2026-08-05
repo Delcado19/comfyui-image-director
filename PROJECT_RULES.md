@@ -510,9 +510,21 @@ firing with the exact contract read from source: `total_blocks=60`,
 directly (`[0, 4070)`) without needing the deeper `img_slice` (only set
 inside the attention-processor forward, not visible at block level) -
 actually a cleaner injection point than the originally-planned
-`attn1_patch` hook. See `tests/router/RESULTS_sam3_spike_stage1.md`. Next:
-Stage 2 (own attention reimplementation on this one block, no bias yet,
-must reproduce baseline output) - not started.
+`attn1_patch` hook. See `tests/router/RESULTS_sam3_spike_stage1.md`.
+
+**Stage 2 (own attention reimplementation, no bias) PASSED (2026-08-05,
+same session):** `QwenBlockAttnReimplProbe` replaces one block's
+`attn.forward` with a hand-copied reimplementation of `Attention.forward`
+(comfy/ldm/qwen_image/model.py:142-203), registered via
+`ModelPatcher.add_object_patch()` (the official, reversible per-clone
+mechanism - NOT a permanent monkeypatch of the shared nn.Module, which
+`ModelPatcher.clone()` does NOT deep-copy). Baseline vs. reimpl-patched
+render, same seed: PNG bytes differed (embedded workflow metadata only),
+but pixel values are **bit-exact identical** (numpy diff: max=0, mean=0.0
+across all channels). See `tests/router/RESULTS_sam3_spike_stage2.md`.
+Next: Stage 3 - add a real SAM3-mask-derived query-key bias at the
+`attn_mask` argument of `optimized_attention_masked`, the one line the
+reimplementation exists to modify - not started.
 
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 

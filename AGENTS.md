@@ -486,9 +486,17 @@ without an actual controlled runtime test.
   references concatenated, `reference_image_num_tokens` gives the source
   token range directly, cleaner than the originally-planned `attn1_patch`
   hook (img/txt still separate at block level). See
-  `tests/router/RESULTS_sam3_spike_stage1.md`. Next: Stage 2 (own
-  attention reimplementation, no bias, must reproduce baseline) - not
-  started.
+  `tests/router/RESULTS_sam3_spike_stage1.md`.
+- **SAM3-attention-hint spike, Stage 2 (attention reimplementation, no
+  bias) PASSED (2026-08-05):** `QwenBlockAttnReimplProbe` replaces one
+  block's `attn.forward` (hand-copied from `Attention.forward`,
+  ~60 lines) via `ModelPatcher.add_object_patch()` - reversible per-clone,
+  not a permanent monkeypatch (confirmed `ModelPatcher.clone()` shares the
+  underlying `nn.Module`, doesn't copy it). Baseline vs. patched render,
+  same seed: pixel values bit-exact identical (numpy diff max=0). See
+  `tests/router/RESULTS_sam3_spike_stage2.md`. Next: Stage 3 - real
+  SAM3-mask-derived query-key bias at `optimized_attention_masked`'s
+  `attn_mask` argument - not started.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
