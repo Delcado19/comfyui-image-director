@@ -549,6 +549,27 @@ untested - explicitly the "sledgehammer" approach the user originally
 wanted to avoid for this non-VTON project, now the only remaining lever
 after every softer alternative failed.
 
+**Hard masking test 1 (`SetLatentNoiseMask`) - bleeding SOLVED, transfer
+still open (2026-08-05, user approved "dann masking"):** unlike the
+attention-bias spike (tried to influence internal routing, failed), this
+constrains locality at the sampler/composition level - the standard
+core node `SetLatentNoiseMask` (`nodes.py:1541`, no custom code) blends
+the original latent back in outside the mask at every denoising step.
+SAM3 mask on "the woman's dress", verified correct polarity via
+`MaskToImage`. Same known-bad prompt/reference/seed. **Result: zero
+bleeding** - background is pixel-identical to source, no tint, no seam
+artifacts - the first fully clean background all session. But the dress
+inside the mask stayed completely black - no color transfer yet, despite
+free denoising within the mask. Codex's hypothesis: the prompt still
+anchors the region to its start state ("black leather dress...needs to be
+changed") and references a "background" - both wordings already proven
+harmful earlier this session; with bleeding now structurally impossible,
+that cautious phrasing is no longer needed. Next test (not yet run):
+simplified prompt without the origin-color anchor or "background" word -
+"Change only the masked dress to match the blue color and material of
+Reference Image #2. Keep everything outside the mask unchanged." See
+`tests/router/RESULTS_masking_test1.md`.
+
 ### Structured JSON edit-plan output — schema exists, structural reliability solved via an external node
 
 The structured edit-plan schema is defined: `docs/schema/edit_plan.schema.json`

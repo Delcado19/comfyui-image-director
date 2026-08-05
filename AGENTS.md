@@ -508,6 +508,15 @@ without an actual controlled runtime test.
   **All mechanism-level (non-hard-masking) approaches for case 3 on Qwen
   are now exhausted**; only hard masking/region-conditioning (real
   inpainting, not an attention hint) remains untested.
+- **Hard masking test 1 (`SetLatentNoiseMask`), bleeding SOLVED, transfer
+  still open (2026-08-05, user approved "dann masking"):** standard core
+  node (`nodes.py:1541`, no custom code) blends the original latent back
+  outside the SAM3 mask every step. Result: zero bleeding, background
+  pixel-identical to source (first fully clean background all session),
+  but dress inside the mask stayed black - no color transfer yet. Codex's
+  next test (not yet run): drop the "black leather dress"/"background"
+  prompt anchors now that bleeding is structurally impossible. See
+  `tests/router/RESULTS_masking_test1.md`.
 - **Multi-reference routing implemented and VRAM-passed**
   (`tests/vram/router/RESULTS_RVref.md`): `build_router_graph.py`'s
   `build()` now accepts `refs: list[str]` (0-2 images), wiring them into
