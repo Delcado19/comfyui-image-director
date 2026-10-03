@@ -1,4 +1,8 @@
-# FLUX.2 Klein 9B (distilled fp8) + SAM3 masking: first clean image-based color transfer without text naming
+# FLUX.2 Klein 9B + SAM3 masking: first clean image-based color transfer without text naming
+
+Covers both checkpoints the user asked to test: the distilled fp8 community
+fine-tune (below) and the official BFL Base checkpoint (own section further
+down), both run through the same A/B/D/B2 causal matrix.
 
 Joint Claude-Codex decision (Codex exec session, read-only review of this
 repo's masking results, the VTON sibling project's workflows, and the
@@ -66,11 +70,7 @@ run changes the dress (B2) or not (D).
 
 - n=1 per variant, one source/reference pair, one mask, one seed - not a
   reliability screen.
-- This is the community fine-tune checkpoint, not official BFL weights -
-  the Base checkpoint (`flux-2-klein-base-9b.safetensors`, 16.91 GB, a
-  separate non-distilled sampling profile per BFL's own documentation, not
-  comparable at 4 steps) has not been tested yet - explicitly requested by
-  the user, still open.
+- This is the community fine-tune checkpoint, not official BFL weights.
 - No router integration - this is a standalone test script, not wired into
   `build_router_graph.py`.
 - VRAM/timing not yet measured for this specific graph (no sampling loop
@@ -83,13 +83,89 @@ run changes the dress (B2) or not (D).
 - Mask quality/robustness on other source/reference pairs, other garments,
   other colors - untested.
 
+## Base checkpoint (`flux-2-klein-base-9b.safetensors`, 16.91 GB) - same A/B/D/B2 matrix
+
+Requested by the user alongside the distilled checkpoint from the start
+("mit der destilled und base variante"). Settings taken directly from the
+installed official `Flux.2 klein 9B-Base Basic Workflow.json` example (not
+guessed): `RandomNoise` + `CFGGuider` (cfg=4) + `KSamplerSelect`
+(`dpmpp_sde`) + `Flux2Scheduler` (34 steps, 1024x1024) +
+`SamplerCustomAdvanced`, in place of the distilled profile's plain
+`KSampler` (4 steps, cfg=1, euler/simple). Same mask, same seed (424242),
+same source/reference images as the distilled run.
+
+| Variant | Text names color? | Reference image | Result |
+|---|---|---|---|
+| A | yes ("red") | red swatch | Dress turned red |
+| B | **no** | red swatch | **Dress turned red** |
+| D | no | **none** | **Dress turned teal/petrol-green - did NOT stay blue** |
+| B2 | **no** | **green swatch** | Dress turned vivid green (clearly distinguishable from D's teal) |
+
+Output files (`E:\AI_Art\`): A = `ImageDirector_KleinTest1_base_00002_.png`,
+B = `ImageDirector_KleinTest1_base_00001_.png`, D =
+`ImageDirector_KleinTest1_base_00003_.png`, B2 =
+`ImageDirector_KleinTest1_base_00004_.png`. All four visually inspected
+directly (no numeric pixel diff run yet for the Base set).
+
+**A and B replicate the distilled checkpoint's positive result**: both
+reference-present variants turned the dress red regardless of whether the
+color was named in text, matching the causal pattern already established.
+
+**D is an open divergence from the distilled checkpoint, not a clean
+negative control.** With no reference image attached, the prompt still
+reads "Change only the masked dress to match the second reference image. Keep
+everything outside the mask unchanged." - there is no second reference for
+the model to match. On the distilled checkpoint this produced no change
+(dress stayed the source blue). On the Base checkpoint, at the same seed,
+the dress changed to a teal/petrol-green that matches neither the source
+blue nor any reference actually supplied - the Base model appears to have
+treated the dangling "second reference image" phrase as license to invent a
+color rather than leaving the region alone. B2's green is visibly distinct
+from D's teal (greener, more saturated, closer to the actual swatch), so the
+reference signal is still doing *something* directionally - but D shows the
+"no reference -> no change" guarantee that held for the distilled checkpoint
+does not automatically hold for Base.
+
+**Disambiguated by a reseed run:** repeated variant D on the Base checkpoint
+at seed 777777 (same mask, same prompt, everything else identical) -
+`ImageDirector_KleinTest1_base_00005_.png`. Result: the dress stayed the
+source blue, same as the distilled checkpoint's D result. So at n=2 seeds,
+1/2 showed the teal drift and 1/2 showed clean preservation. This points to
+(a) seed-specific sampling noise rather than (b) a systematic Base-vs-distilled
+behavioral difference - the "no reference -> no change" guarantee is not
+reliably broken on Base, but it is also not as airtight as the single
+distilled-checkpoint sample suggested: with no reference latent anchoring the
+unmasked-color prior, Base's full 34-step denoise inside the mask can
+occasionally drift at some seeds even though the prompt gives it no positive
+reason to change color. This is still n=2 - not enough to quantify a drift
+rate - but it reframes the finding from "Base behaves differently from
+distilled" to "Base's no-reference case has some non-zero color-drift risk
+that a single sample doesn't capture reliably." A larger repeat-seed sweep
+(n>=5) would be needed to estimate how often this happens, and the prompt
+reword suggested below has not been tested as an independent mitigation.
+
+**Timing observed (not yet systematically measured):** roughly 17-27 minutes
+wall-clock per run on this GPU, dominated by the 34-step `dpmpp_sde` sampling
+loop (~30-42s/it observed via the stderr progress bar) rather than model
+loading (the UNET/CLIP/VAE loaders cache after the first run). One run
+(B2) exceeded the test script's 1800s client-side poll timeout by ~16s even
+though it completed successfully server-side - the script's `timeout_s=1800`
+for the Base profile is too tight and should be raised (e.g. to 2400s)
+before further Base-checkpoint runs.
+
 ## Next steps (not yet done)
 
-1. Repeat on the Base checkpoint (`flux-2-klein-base-9b.safetensors`) with
-   its own, non-distilled sampling profile (BFL documents ~50 steps for
-   Base, not 4) - explicitly requested by the user.
-2. Add VRAM sampling (same method as `masking_test2_current_env.py`) to
-   this test.
-3. n>1 repeat-seed pass before calling this reliable rather than feasible.
-4. Flux.2 Dev + masking, as its own separate test (needs the source-latent
+1. Quantify the Base checkpoint's no-reference color-drift rate with a
+   larger repeat-seed sweep (n>=5) now that n=2 shows it is real but not
+   universal (1/2 seeds drifted).
+2. Test whether rewording the no-reference prompt (e.g. "Keep the masked
+   dress unchanged" instead of referencing a nonexistent "second reference
+   image") reduces or eliminates the drift - not yet tried.
+3. ~~Raise `timeout_s` for the Base profile~~ - done (2400s).
+4. Add VRAM sampling (same method as `masking_test2_current_env.py`) to
+   this test, for both checkpoints.
+5. n>1 repeat-seed pass on the A/B/B2 (reference-present) variants too,
+   before calling either checkpoint's positive result reliable rather than
+   feasible.
+6. Flux.2 Dev + masking, as its own separate test (needs the source-latent
    graph fix Codex identified).
