@@ -982,6 +982,127 @@ to close the integration test gap. Sign-off is scoped to "explicit manual
 mode with a real source" only - not automatic mode selection, general
 reference-transfer reliability, or back-to-back operation without `/free`.
 
+### Remaining A/B scripts migrated to current model paths (2026-10-03, same day)
+
+Fixed `UnetLoaderGGUF`/`CLIPLoaderGGUF` -> `UNETLoader`/`CLIPLoader` (Qwen
+Image Edit 2511, same fp8 migration as the router) in `ab_background_word.py`,
+`ab_negative_prompt.py`, `ab_ref_weight.py`, `sam3_spike_stage1_probe.py`,
+`sam3_spike_stage2_reimpl.py`, `sam3_spike_stage3_bias.py` - live-verified
+(`ab_ref_weight.py`, `completed: true`).
+
+Flux.2 Dev's own model files drifted the OPPOSITE direction during the same
+ComfyUI upgrade - safetensors -> GGUF (`UNETLoader` -> `UnetLoaderGGUF`,
+`flux2-dev-nvfp4-mixed.safetensors` -> `flux2_dev-Q4_K_M.gguf`), plus a CLIP
+rename (`..._fp4_mixed...` -> `..._nvfp4_mixed...`). Fixed in `ab_flux2dev.py`,
+`ab_flux2dev_ablation.py`, `ab_flux2dev_notext.py` - live-verified
+(`ab_flux2dev_ablation.py`, `completed: true`, though noticeably slower than
+historical runs - ~10+ minutes for 28 steps on this NVFP4 checkpoint, GPU at
+98% the whole time; not independently timed against the pre-pause baseline,
+flagged as a data point for the VRAM/perf discussion below, not a conclusion).
+
+Also fixed: `tests/vram/combined-multiref/build_graph.py` (upgraded from the
+permanently-deleted Qwen Image Edit 2509 pair to the current 2511 fp8 pair -
+not just a path drift, 2509 was intentionally deleted 2026-08-03) and the
+analyzer's own catalog name in that file plus `tests/schema/analyzer-json*/
+build_graph.py` (old non-abliterated `Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf`
+-> current `Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf`/path). Compile-
+checked, not live-run (no model-loading risk - analyzer-only graphs).
+
+`masking_test1_setlatentnoisemask.py` deliberately NOT touched - historic
+record of the original 2026-08-05 result, superseded by
+`masking_test2_current_env.py` for current-environment reproduction.
+
+### Model-size/quantization tradeoff and Flux.2 Dev's actual rejection scope (2026-10-03)
+
+**User's explicit position:** deliberately chose larger, less-quantized
+model variants (fp8 over GGUF Q4) specifically to avoid quantization-induced
+errors - do not propose downgrading Qwen Image Edit 2511 back to a GGUF
+quant as a VRAM-fit fix. The fp8 migration above was forced by the GGUF file
+being deleted upstream, not a choice to revisit.
+
+**Correction to this document's own earlier framing:** "Flux.2 Dev rejected"
+is too strong as stated. What `RESULTS_flux2dev_capability.md` actually
+closed out (Codex's conclusion, from a 3-part controlled ablation,
+2026-08-05) is specifically the *prompt-only + chained-`ReferenceLatent`*
+mechanism for color/material transfer without naming the color in text -
+not masking-assisted Flux.2 Dev, which was never tried. **Open item:**
+re-test Flux.2 Dev with the same SAM3 + `SetLatentNoiseMask` mechanism that
+solved this for Qwen Image Edit 2511, before treating Flux.2 Dev as fully
+closed out for this problem class.
+
+**New candidate found via today's model-catalog survey:** `FLUX.2 [klein]
+9B` - both the distilled fp8 checkpoint
+(`diffusion_models/Flux.2 klein/9B/snofsSexNudesAndOtherFunStuff_distilledV12Fp8.safetensors`,
+8.46 GB) and the Base checkpoint
+(`diffusion_models/Flux.2 klein/9B - Base/flux-2-klein-base-9b.safetensors`,
+16.91 GB, at/slightly over the RTX 5080's 16 GB). A `Flux2KleinMultiReferenceLatent`
+node (accepts `latent_1`...`latent_8`) now exists in
+`ComfyUI-Flux2Klein-Enhancer` that did NOT appear in the 2026-07-31 AUDIT.md
+node listing - the pack's own git state is unchanged since (commit `bdbd930`,
+2026-06-22, not dirty), so this capability existed before the project's pause
+but was not catalogued then. Per the sibling VTON project's own primary-
+source-grounded notes (`...workflows/VTON/Flux.2 Klein 9B/workflow_notes/
+MODEL_NOTES_FLUX2_KLEIN_9B.md`, sourced from Black Forest Labs' official
+repo/HuggingFace model card): `klein 9B` officially supports multi-reference
+editing (the `9B KV` variant is described as more efficient but not required),
+distilled variants are designed for 4-step inference (not this project's
+usual 8), and that sibling project already independently identified SAM3 as
+the more plausible local masking helper over RMBG - same conclusion this
+project reached independently. The sibling project has 6 iterated,
+Codex-authored VTON workflow versions for this exact model
+(`Flux2 klein 9b Virtual Try-On 5.0` through `6.0.4`) not yet reviewed by
+this project.
+
+**User's explicit instruction (2026-10-03): retry the masking mechanism with
+Flux.2 Klein 9B, both the distilled fp8 and the Base checkpoint** - not yet
+started. Also open: whether `HiDreamO1ReferenceImages` (a node found during
+the same survey, in the installed HiDream node pack) is usable at all with
+the only installed HiDream checkpoint (`hidream_i1_dev-NVFP4_MIXED.safetensors`,
+**i1**, not the **O1** variant the node's name implies) - capability
+mismatch risk, not verified either way.
+
+### FLUX.2 Klein 9B + masking: first clean image-based color transfer without text naming (2026-10-03, same day)
+
+Self-correction made before any GPU time was spent (verified via
+`comfy/supported_models.py`/`comfy/model_base.py` source reading, not
+assumed): Klein does NOT route through the unrelated "Lens" model class
+(Claude's initial, wrong belief, from misapplying a sibling-project note
+written against ComfyUI v0.23.0) - it loads as the same `Flux2(Flux)` class
+Flux.2 Dev uses, which inherits `reference_latents` handling from the `Flux`
+base class. The native `ReferenceLatent` mechanism is confirmed functional
+for Klein in the currently installed v0.38.0.
+
+Joint Claude-Codex test design (same session, Codex exec round) analyzed
+the VTON sibling project's mature 6.0.4 outfit-transfer workflow pattern
+(SAM3-cutout reference + two chained `ReferenceLatent` + partial denoise +
+post-hoc `ColorMatchV2`) and, per Codex's review, scoped the first test down
+to the minimum needed to test causality cleanly: SAM3 mask + two chained
+native `ReferenceLatent` (source, then reference) + plain `CLIPTextEncode`,
+4 steps/cfg=1 (BFL's distilled-model card recommendation), denoise=1.0
+inside the mask, no caption stage, no color-correction post-process.
+
+**Result (`tests/router/RESULTS_klein_test1_masked_reference.md`,
+`klein_test1_masked_reference.py`, distilled fp8 community fine-tune
+checkpoint): positive, with Codex's requested causal control.** Same mask,
+same seed, same prompt (never naming a color) - red reference -> red dress,
+green reference -> green dress, no reference -> dress unchanged. **This is
+the first time in this project's history that image-based color transfer
+without naming the color in text has been demonstrated** - both Qwen Image
+Edit 2511 (today, `RESULTS_masking_test2_current_env.md`) and Flux.2 Dev
+(2026-08-05, `RESULTS_flux2dev_capability.md`) failed this exact test.
+Background preservation measured numerically (same method as the Qwen
+test): near-identical noise floor whether the run changes the dress or not,
+confirming the color change is localized, not a global drift.
+
+**Not yet shown, explicitly open:** n=1 only; this is a community fine-tune,
+not official BFL weights; the Base checkpoint (16.91 GB, non-distilled,
+BFL-documented ~50-step sampling profile, explicitly requested by the user,
+not comparable to 4-step distilled settings) is untested; no VRAM/timing
+measurement on this graph yet; no router integration; Flux.2 Dev + masking
+remains untested (Codex noted Dev's existing graph samples from an empty
+latent, not the source latent - needs a bigger change than just adding a
+mask).
+
 ## Mandatory safety rules
 
 - The analyzer-load/eviction gap (`RESULTS_RVchain.md`'s 901 MiB near-miss)

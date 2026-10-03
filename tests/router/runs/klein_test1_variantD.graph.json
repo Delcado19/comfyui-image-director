@@ -1,0 +1,199 @@
+{
+  "prompt": {
+    "src": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "imgdir_masktest2_source_bluedress.png"
+      }
+    },
+    "unet": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "Flux.2 klein\\9B\\snofsSexNudesAndOtherFunStuff_distilledV12Fp8.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "clip": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "Flux.2 klein 9b\\qwen3-8b-heretic_fp8_e4m3fn.safetensors",
+        "type": "flux2",
+        "device": "default"
+      }
+    },
+    "vae": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "Flux.2\\flux2-vae.safetensors"
+      }
+    },
+    "src_latent": {
+      "class_type": "VAEEncode",
+      "inputs": {
+        "pixels": [
+          "src",
+          0
+        ],
+        "vae": [
+          "vae",
+          0
+        ]
+      }
+    },
+    "sam3_load": {
+      "class_type": "easy sam3ModelLoader",
+      "inputs": {
+        "model": "sam3.safetensors",
+        "segmentor": "image",
+        "device": "cuda",
+        "precision": "fp16"
+      }
+    },
+    "sam3_seg": {
+      "class_type": "easy sam3ImageSegmentation",
+      "inputs": {
+        "sam3_model": [
+          "sam3_load",
+          0
+        ],
+        "images": [
+          "src",
+          0
+        ],
+        "prompt": "the woman's dress",
+        "threshold": 0.3,
+        "keep_model_loaded": false,
+        "add_background": "none",
+        "detection_limit": -1
+      }
+    },
+    "mask_preview": {
+      "class_type": "MaskToImage",
+      "inputs": {
+        "mask": [
+          "sam3_seg",
+          0
+        ]
+      }
+    },
+    "mask_save": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "mask_preview",
+          0
+        ],
+        "filename_prefix": "ImageDirector_KleinTest1_mask"
+      }
+    },
+    "noise_mask": {
+      "class_type": "SetLatentNoiseMask",
+      "inputs": {
+        "samples": [
+          "src_latent",
+          0
+        ],
+        "mask": [
+          "sam3_seg",
+          0
+        ]
+      }
+    },
+    "pos_text": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "clip",
+          0
+        ],
+        "text": "Change only the masked dress to match the second reference image. Keep everything outside the mask unchanged."
+      }
+    },
+    "pos_ref_src": {
+      "class_type": "ReferenceLatent",
+      "inputs": {
+        "conditioning": [
+          "pos_text",
+          0
+        ],
+        "latent": [
+          "src_latent",
+          0
+        ]
+      }
+    },
+    "neg_text": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "clip",
+          0
+        ],
+        "text": ""
+      }
+    },
+    "neg_ref_src": {
+      "class_type": "ReferenceLatent",
+      "inputs": {
+        "conditioning": [
+          "neg_text",
+          0
+        ],
+        "latent": [
+          "src_latent",
+          0
+        ]
+      }
+    },
+    "sample": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "unet",
+          0
+        ],
+        "positive": [
+          "pos_ref_src",
+          0
+        ],
+        "negative": [
+          "neg_ref_src",
+          0
+        ],
+        "latent_image": [
+          "noise_mask",
+          0
+        ],
+        "seed": 424242,
+        "steps": 4,
+        "cfg": 1,
+        "sampler_name": "euler",
+        "scheduler": "simple",
+        "denoise": 1.0
+      }
+    },
+    "decode": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "sample",
+          0
+        ],
+        "vae": [
+          "vae",
+          0
+        ]
+      }
+    },
+    "save": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "decode",
+          0
+        ],
+        "filename_prefix": "ImageDirector_KleinTest1"
+      }
+    }
+  }
+}
