@@ -28,7 +28,7 @@ ComfyUI root:
 
 Separate development repository:
 
-`C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director`
+`C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director`
 
 The ComfyUI installation is a customized working environment.
 
@@ -36,7 +36,7 @@ Do not reorganize its existing folder structure.
 
 Sibling dev repository providing the `QwenVLStructuredGGUF` custom node:
 
-`C:\Users\Delcado\Documents\Software_Projects\comfyui-qwenvl-structured-gguf`
+`C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-qwenvl-structured-gguf`
 
 Installed into `G:\ComfyUI-Easy-Install\ComfyUI\custom_nodes\` via a
 directory junction (that repo is the source of truth, not a copy). MIT,
@@ -603,7 +603,7 @@ use prompt-only structured output as the analyzer's structured-plan path.
 
 This led to a new, separate MIT-licensed dev repo,
 `comfyui-qwenvl-structured-gguf`
-(`C:\Users\Delcado\Documents\Software_Projects\comfyui-qwenvl-structured-gguf`,
+(`C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-qwenvl-structured-gguf`,
 not derived from the GPL-3.0 `ComfyUI-QwenVL`/`ComfyUI-QwenVL-Mod`, since
 this project's other published node packages are all MIT under the
 `delcado` Comfy Registry publisher and copyleft-derived code would conflict
@@ -867,6 +867,120 @@ back-to-back usage.
   (`jibMixZIT_v10.safetensors` + `Lockout-Qwen3-4b-zimage-hereticV2-q8.gguf`,
   both user-chosen) was not benchmarked against the other checkpoint/CLIP
   options sitting on disk
+
+### Environment drift after a ~2-month pause, and masking integration (2026-10-03)
+
+Project was inactive since 2026-08-10. ComfyUI was upgraded v0.29.2 ->
+v0.38.0 in the meantime, and several model files/node packs the router and
+test scripts depended on changed or were disabled. Found and fixed, in
+order:
+
+1. **`tests/router/build_router_graph.py`'s `sys.path.insert` (and 18 other
+   test scripts') hardcoded dev-repo path was stale** - missing a `\ComfyUI\`
+   path segment from before the repo was moved under a `ComfyUI/` parent
+   folder. Verified by actually running the script (`ModuleNotFoundError`),
+   not inferred. Fixed across all 19 affected files plus this document's own
+   path references.
+2. **Qwen Image Edit 2511's GGUF UNet and its abliterated GGUF text encoder
+   no longer exist on disk** - both replaced by fp8 safetensors files under
+   the renamed `diffusion_models/`/`text_encoders/` folders (`UNETLoader`/
+   `CLIPLoader` instead of `UnetLoaderGGUF`/`CLIPLoaderGGUF`). Same drift hit
+   the generate branch's Z-Image Turbo CLIP and VAE folder name.
+3. **`LoadJsonFromText`/`GetTextFromJson` (comfyui-art-venture) are
+   quarantine-disabled** (`custom_nodes/_quarantine.disabled/`) - not
+   re-enabled without knowing why. Replaced with the core ComfyUI node
+   `JsonExtractString`, added to core sometime during the upgrade.
+4. This project's shared synthetic/photo test fixtures in ComfyUI's
+   `input/` directory (`IMG_7148.jpg`, `imgdir_test_ref2.png`,
+   `imgdir_jsontest_shapes.png`) were deleted (the folder now holds an
+   unrelated file set from other work) - not recoverable, substitutes
+   created/reused instead (see `tests/router/RESULTS_masking_test2_current_env.md`).
+
+Full before/after detail, VRAM numbers, and the new numeric outside-mask
+pixel check: `tests/router/RESULTS_masking_test2_current_env.md`.
+
+**Masking integration decision (joint Claude-Codex, Codex exec session,
+read-only review):** added an explicit `edit_mode: "plain" |
+"masked_reference"` parameter to `build_router_graph.py`'s `build()`,
+decided at graph-build time by the caller - deliberately NOT derived from
+the analyzer's `is_local_region`/`edits[]` fields (documented above as
+unreliable). Rejected alternatives: a 3-way runtime lazy switch gated on
+`is_local_region` (elevates a known-unreliable field to a render-gating
+decision), and always masking whenever a reference image is present
+(reference presence doesn't imply locality - a global reference-based
+restyle would be wrongly masked). `masked_reference` requires the caller to
+supply `mask_target` and `reference_description` explicitly and exactly one
+reference image; no automatic detection exists yet.
+
+Live-validated end-to-end against the real ComfyUI instance: plain
+generate, plain edit, and `masked_reference` edit all completed
+successfully through the actual router/lazy-switch graph (not just the
+standalone test script), including confirming the generate branch's models
+never load when `masked_reference` is selected. The ablation from
+`RESULTS_masking_test1.md` reproduced too: removing the explicit color word
+from the prompt made the dress default to black instead of picking up the
+reference's color - masking fixes locality, not the pre-existing
+needs-explicit-color-naming limitation.
+
+**Known, OPEN risk (documented by the implementing agent, not Codex-blessed
+as acceptable - Codex's post-implementation review flagged this framing and
+it was corrected):** the outer generate/edit lazy switch does not guarantee
+SAM3's load and the editor's own CLIP/UNet load are sequential *within* the
+masked edit branch (no data dependency forces it, unlike the E2/E3 fix).
+Empirically fine in n=1/n=2 live tests (worst *sampled* margin 760-888 MiB
+free), but the VRAM sampling loop had gaps up to ~1.2-1.4s between samples,
+not the intended 250ms - these numbers are observed minimums, not a proven
+floor. Not proven safe under back-to-back sequencing the way the plain edit
+branch's mandatory `/free` rule was established. Do not use
+`masked_reference` for repeated back-to-back production requests without a
+dedicated, tighter-sampling VRAM-chain test first.
+
+**Codex's post-implementation review (same session) also found, and these
+were fixed before closing this entry:**
+- `build()`'s hardcoded default source image (`imgdir_jsontest_shapes.png`)
+  doesn't exist - every live validation above overrode it after calling
+  `build()`, so the function's own default return value was never actually
+  tested. Fixed: `build()` now takes an explicit `source_image` parameter
+  (default kept for compatibility, but the default file still doesn't
+  exist - callers must pass a real filename).
+- The plain-generate live test contained no SAM3 nodes at all, so it could
+  not prove SAM3 stays unexecuted when `masked_reference`'s wiring is
+  *present* but a generate instruction is given. Closed by the 4th live run
+  below.
+
+**Both of Codex's completion blockers closed in the same session, with live
+evidence:** a 4th live submission used `build()`'s own new `source_image`
+parameter directly (no post-hoc graph override) with `edit_mode=
+"masked_reference"` wiring present but a GENERATE-classified instruction.
+Result: completed in 24.5s (vs. 58-71s for the masked-edit runs), VRAM
+time-series shows only two phases (analyzer, then the generate branch's own
+ramp) - no third SAM3-scale load/release bump the way every masked-edit run
+showed. Confirms SAM3 stays unexecuted when the masked wiring is present in
+the graph but the analyzer selects generate, not only when `edit_mode=
+"plain"` omits the wiring entirely. Output visually correct (green vintage
+car, the requested generate subject).
+
+**Not done in this pass (flagged, not forgotten):**
+- The many other `tests/router/*.py` A/B scripts still reference the
+  deleted GGUF file paths and the deleted synthetic test image - they will
+  fail as-is until someone updates them, same category of fix as above but
+  out of scope here.
+- `build_router_graph.py`'s CLI entry point (`if __name__ == "__main__"`)
+  does not expose `source_image`/`edit_mode`/`mask_target`/
+  `reference_description` - only the Python `build()` function is usable
+  for `masked_reference` today; the CLI stays limited to its original
+  plain-mode argument set (Codex's review, confirmed not a blocker).
+
+**Codex's final sign-off (same thread, re-reading the 4th run's graph/
+history/CSV itself):** "Die manuell ausgewählte Masking-Integration kann
+jetzt im vereinbarten Umfang als abgeschlossen gelten." Caveat kept
+explicit: the VRAM evidence shows behavior consistent with a successful
+lazy selection, not a node-level proof SAM3 never executed (no per-node
+execution events are retained in ComfyUI's `/history`); combined with the
+reviewed wiring (no extra output-root node), Codex judged this sufficient
+to close the integration test gap. Sign-off is scoped to "explicit manual
+mode with a real source" only - not automatic mode selection, general
+reference-transfer reliability, or back-to-back operation without `/free`.
 
 ## Mandatory safety rules
 

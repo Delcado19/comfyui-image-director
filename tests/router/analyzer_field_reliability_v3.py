@@ -32,10 +32,10 @@ Scoring: same as analyzer_field_reliability.py.
 import json
 import sys
 
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\lib")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\lib")
 from comfy_submit import submit, poll_history
 
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director")
 from image_director.edit_plan_schema import GENERATE_PLAN, REFERENCE_ROLE_ENUM_ORDERED, OP_ENUM
 
 MODEL_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\huihui-ai\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf"

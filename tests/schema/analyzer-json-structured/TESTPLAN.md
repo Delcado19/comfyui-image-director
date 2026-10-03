@@ -13,7 +13,7 @@ evidence rules (verified-in-this-project over borrowed conclusions).
 ## Dependency
 
 `comfyui-qwenvl-structured-gguf` (MIT, sibling dev repo at
-`C:\Users\Delcado\Documents\Software_Projects\comfyui-qwenvl-structured-gguf`),
+`C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-qwenvl-structured-gguf`),
 installed into `G:\ComfyUI-Easy-Install\ComfyUI\custom_nodes\` via a
 directory junction (not a copy - the dev repo is the source of truth). Not
 published to the Comfy Registry (user's explicit instruction: not until

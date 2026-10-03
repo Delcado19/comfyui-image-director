@@ -11,8 +11,8 @@ Same instructions as RESULTS_content_quality.md/RESULTS_repeat_seed_cases12.md.
 import json
 import sys
 
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\router")
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\lib")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\router")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\lib")
 from build_router_graph import build
 from comfy_submit import submit, poll_history
 

@@ -29,7 +29,7 @@ single-reference only).
 import json
 import sys
 
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\lib")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\lib")
 from comfy_submit import submit, poll_history
 
 # Flux-native prompt, not Qwen's known-bad "background" wording - testing

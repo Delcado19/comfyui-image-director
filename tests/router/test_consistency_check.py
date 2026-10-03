@@ -9,7 +9,7 @@ needing a live ComfyUI call.
 import json
 import sys
 
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director")
 from image_director.edit_plan_schema import validate_edit_plan
 
 # Real v3-guidance sample (AFRv3_results.json, seed 99002): specific subject

@@ -9,8 +9,8 @@ image)? n=3 each, analyzer-only, no KSampler.
 import json
 import sys
 
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\router")
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\lib")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\router")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\lib")
 from analyzer_field_reliability_fewshot import GUIDANCE_FEWSHOT, FEWSHOT_EXAMPLE, MODEL_PATH, MMPROJ_PATH
 from analyzer_field_reliability_v3 import edit_plan_schema_v3
 from comfy_submit import submit, poll_history

@@ -21,8 +21,8 @@ Scoring: same as analyzer_field_reliability.py/_v3.py.
 import json
 import sys
 
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\router")
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\lib")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\router")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\lib")
 from analyzer_field_reliability_v3 import edit_plan_schema_v3, SCENE_WORDS, score
 from comfy_submit import submit, poll_history
 

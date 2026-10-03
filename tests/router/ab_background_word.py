@@ -28,7 +28,7 @@ Still the right evidence for this specific hypothesis.
 import json
 import sys
 
-sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\comfyui-image-director\tests\lib")
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\lib")
 from comfy_submit import submit, poll_history
 
 PROMPT_WITH_BACKGROUND = (
