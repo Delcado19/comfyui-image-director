@@ -25,7 +25,7 @@ tensors collapse to element 0; multiple stills would need the separate
 import json
 import sys
 
-MODEL_NAME = "Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf"
+MODEL_NAME = "Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf"
 
 PREAMBLE = """Output ONLY one valid JSON object as your entire response. No markdown code fences, no explanation, no text before or after the JSON. The JSON object must be the edit plan itself, not wrapped in an envelope such as "output", "content", "final", or "text".
 

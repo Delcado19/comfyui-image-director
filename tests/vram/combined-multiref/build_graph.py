@@ -29,13 +29,13 @@ def build(n_images: int, prefix: str, analyzer_seed: int, steps: int = 8, cfg: f
 
     graph = {
         "1": {
-            "class_type": "UnetLoaderGGUF",
-            "inputs": {"unet_name": "Qwen Image Edit 2509\\Qwen-Image-Edit-2509-Q4_K_M.gguf"},
+            "class_type": "UNETLoader",
+            "inputs": {"unet_name": "Qwen Image Edit 2511\\qwen_image_edit_2511_fp8.safetensors", "weight_dtype": "default"},
         },
         "2": {
-            "class_type": "CLIPLoaderGGUF",
+            "class_type": "CLIPLoader",
             "inputs": {
-                "clip_name": "Qwen Image Edit 2509\\Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf",
+                "clip_name": "Qwen Image Edit 2511\\qwen2.5_vl_7b_huihui_abliterated_fp8.safetensors",
                 "type": "qwen_image",
             },
         },
@@ -81,7 +81,7 @@ def build(n_images: int, prefix: str, analyzer_seed: int, steps: int = 8, cfg: f
         "16": {
             "class_type": "AILab_QwenVL_GGUF_Advanced",
             "inputs": {
-                "model_name": "Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf",
+                "model_name": "Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf",
                 "device": "auto",
                 "preset_prompt": "\U0001f5bc️ Detailed Description",
                 "custom_prompt": "",

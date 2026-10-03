@@ -51,8 +51,8 @@ def build(seed: int) -> dict:
         },
         "get_size": {"class_type": "GetImageSize", "inputs": {"image": ["src_scale", 0]}},
 
-        "unet": {"class_type": "UNETLoader", "inputs": {"unet_name": "Flux.2 Dev\\flux2-dev-nvfp4-mixed.safetensors", "weight_dtype": "default"}},
-        "clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": "Flux.2 Dev\\mistral_3_small_flux2_fp4_mixed.safetensors", "type": "flux2"}},
+        "unet": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": "Flux.2 Dev\\flux2_dev-Q4_K_M.gguf"}},
+        "clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": "Flux.2 Dev\\mistral_3_small_flux2_nvfp4_mixed.safetensors", "type": "flux2"}},
         "vae": {"class_type": "VAELoader", "inputs": {"vae_name": "Flux.2\\flux2-vae.safetensors"}},
 
         "src_latent": {"class_type": "VAEEncode", "inputs": {"pixels": ["src_scale", 0], "vae": ["vae", 0]}},

@@ -24,8 +24,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 from image_director.edit_plan_schema import edit_plan_schema  # noqa: E402
 
-MODEL_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\Qwen\Qwen2.5-VL-7B-Instruct-GGUF\Qwen2.5-VL-7B-Instruct-UD-Q4_K_S.gguf"
-MMPROJ_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\Qwen\Qwen2.5-VL-7B-Instruct-GGUF\Qwen2.5-VL-7B-Instruct-mmproj-BF16.gguf"
+MODEL_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\huihui-ai\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf"
+MMPROJ_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\huihui-ai\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\Qwen2.5-VL-7B-Instruct-abliterated.mmproj-f16.gguf"
 
 
 CASES = {
