@@ -97,9 +97,19 @@ PROMPT_B = (
     "Change only the masked dress to match the second reference image. "
     "Keep everything outside the mask unchanged."
 )
+# Variant D2 (added 2026-10-04, after the Base checkpoint's D-variant color
+# drift finding - see RESULTS_klein_test1_masked_reference.md): D reuses
+# PROMPT_B's wording even with no reference attached, so the prompt itself
+# dangles a "second reference image" that doesn't exist. D2 tests whether
+# that dangling phrase is what gives the Base checkpoint room to invent a
+# color (vs. a prompt that gives it nothing to resolve). Not yet run against
+# the distilled checkpoint's D result either way - D's n=2 (1 drift, 1 clean)
+# already reads as seed noise, not a systematic issue, so D2 is a mitigation
+# candidate to characterize, not a fix for a confirmed bug.
+PROMPT_D2 = "Keep the masked dress unchanged. Do not alter its color or material."
 
 
-def build(seed: int, prompt_text: str, ref_image: str | None, profile: str = "distilled") -> dict:
+def build(seed: int, prompt_text: str, ref_image: str | None, profile: str = "distilled", include_mask_preview: bool = True) -> dict:
     """ref_image=None builds variant D (no reference image / no ReferenceLatent
     for it at all - tests whether the model does anything systematic to the
     masked region without a reference, vs. B/B2's behavior).
@@ -110,6 +120,16 @@ def build(seed: int, prompt_text: str, ref_image: str | None, profile: str = "di
     exact settings (steps=34, cfg=4, dpmpp_sde) read directly from the
     installed official "Flux.2 klein 9B-Base Basic Workflow.json" - the Base
     checkpoint is not distilled and is not comparable at 4-step settings.
+
+    include_mask_preview=False (added 2026-10-04, per Codex's router-
+    integration review - see PROJECT_RULES.md): omits mask_preview/mask_save.
+    Codex flagged that those two nodes are an extra OUTPUT_NODE=True
+    execution root this standalone script has but build_router_graph.py's
+    masked_reference wiring deliberately does NOT (to preserve the lazy
+    generate/edit switch - see that module's docstring), so this script's
+    own VRAM/scheduling behavior with mask_save present may not transfer to
+    the router's actual topology. Use False to reproduce the router's real
+    node set for a representative VRAM/timing test.
     """
     p = PROFILES[profile]
     graph = {
@@ -129,8 +149,6 @@ def build(seed: int, prompt_text: str, ref_image: str | None, profile: str = "di
                 "threshold": 0.3, "keep_model_loaded": False, "add_background": "none", "detection_limit": -1,
             },
         },
-        "mask_preview": {"class_type": "MaskToImage", "inputs": {"mask": ["sam3_seg", 0]}},
-        "mask_save": {"class_type": "SaveImage", "inputs": {"images": ["mask_preview", 0], "filename_prefix": f"ImageDirector_KleinTest1_{profile}_mask"}},
         "noise_mask": {"class_type": "SetLatentNoiseMask", "inputs": {"samples": ["src_latent", 0], "mask": ["sam3_seg", 0]}},
 
         "pos_text": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["clip", 0], "text": prompt_text}},
@@ -142,6 +160,9 @@ def build(seed: int, prompt_text: str, ref_image: str | None, profile: str = "di
         "decode": {"class_type": "VAEDecode", "inputs": {"samples": ["sample", 0], "vae": ["vae", 0]}},
         "save": {"class_type": "SaveImage", "inputs": {"images": ["decode", 0], "filename_prefix": f"ImageDirector_KleinTest1_{profile}"}},
     }
+    if include_mask_preview:
+        graph["mask_preview"] = {"class_type": "MaskToImage", "inputs": {"mask": ["sam3_seg", 0]}}
+        graph["mask_save"] = {"class_type": "SaveImage", "inputs": {"images": ["mask_preview", 0], "filename_prefix": f"ImageDirector_KleinTest1_{profile}_mask"}}
 
     if ref_image is not None:
         graph["ref"] = {"class_type": "LoadImage", "inputs": {"image": ref_image}}
@@ -203,13 +224,14 @@ def run_variant(name: str, seed: int, prompt_text: str, ref_image: str | None, p
 
 
 if __name__ == "__main__":
-    variant = sys.argv[1]  # "A", "B", "D", "B2"
+    variant = sys.argv[1]  # "A", "B", "D", "D2", "B2"
     profile = sys.argv[2] if len(sys.argv) > 2 else "distilled"  # "distilled" or "base"
     seed = int(sys.argv[3]) if len(sys.argv) > 3 else 424242
     variants = {
         "A": (PROMPT_A, REF_IMAGE_RED),
         "B": (PROMPT_B, REF_IMAGE_RED),
         "D": (PROMPT_B, None),
+        "D2": (PROMPT_D2, None),
         "B2": (PROMPT_B, REF_IMAGE_GREEN),
     }
     prompt_text, ref_image = variants[variant]

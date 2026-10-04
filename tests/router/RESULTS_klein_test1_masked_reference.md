@@ -126,23 +126,34 @@ reference signal is still doing *something* directionally - but D shows the
 "no reference -> no change" guarantee that held for the distilled checkpoint
 does not automatically hold for Base.
 
-**Disambiguated by a reseed run:** repeated variant D on the Base checkpoint
-at seed 777777 (same mask, same prompt, everything else identical) -
-`ImageDirector_KleinTest1_base_00005_.png`. Result: the dress stayed the
-source blue, same as the distilled checkpoint's D result. So at n=2 seeds,
-1/2 showed the teal drift and 1/2 showed clean preservation. This points to
-(a) seed-specific sampling noise rather than (b) a systematic Base-vs-distilled
-behavioral difference - the "no reference -> no change" guarantee is not
-reliably broken on Base, but it is also not as airtight as the single
-distilled-checkpoint sample suggested: with no reference latent anchoring the
-unmasked-color prior, Base's full 34-step denoise inside the mask can
-occasionally drift at some seeds even though the prompt gives it no positive
-reason to change color. This is still n=2 - not enough to quantify a drift
-rate - but it reframes the finding from "Base behaves differently from
-distilled" to "Base's no-reference case has some non-zero color-drift risk
-that a single sample doesn't capture reliably." A larger repeat-seed sweep
-(n>=5) would be needed to estimate how often this happens, and the prompt
-reword suggested below has not been tested as an independent mitigation.
+**Disambiguated, then sized, by a repeat-seed sweep:** variant D repeated on
+the Base checkpoint at three more seeds (same mask, same prompt, everything
+else identical):
+
+| Seed | Result | File |
+|---|---|---|
+| 424242 (original) | **Teal/petrol drift** | `ImageDirector_KleinTest1_base_00003_.png` |
+| 777777 | Stayed blue | `ImageDirector_KleinTest1_base_00005_.png` |
+| 111111 | Stayed blue | `ImageDirector_KleinTest1_base_00006_.png` |
+| 555555 | Stayed blue | `ImageDirector_KleinTest1_base_00007_.png` |
+
+**Final at n=4: 1/4 seeds (25%) showed the teal drift, 3/4 showed clean
+preservation.** This confirms (a) seed-specific sampling noise rather than
+(b) a systematic Base-vs-distilled behavioral difference - the "no reference
+-> no change" guarantee is not reliably broken on Base, but it is also not
+as airtight as the single distilled-checkpoint sample suggested: with no
+reference latent anchoring the unmasked-color prior, Base's full 34-step
+denoise inside the mask can occasionally drift at some seeds even though the
+prompt gives it no positive reason to change color. n=4 is still a small
+sample (a true ~25% rate has wide uncertainty at this n - anywhere from
+roughly 5% to 55% would not be surprising), but it is now large enough to
+say the drift is real and non-trivial, not a one-off fluke, while also
+confirming most seeds do preserve color correctly. `PROMPT_D2` (added to
+`klein_test1_masked_reference.py`, not yet run) rewords the no-reference
+prompt to not reference a nonexistent "second reference image" ("Keep the
+masked dress unchanged. Do not alter its color or material.") as an untested
+mitigation candidate for this drift - worth testing before relying on Base's
+no-reference masked-edit behavior in any production use.
 
 **Timing observed (not yet systematically measured):** roughly 17-27 minutes
 wall-clock per run on this GPU, dominated by the 34-step `dpmpp_sde` sampling
@@ -153,19 +164,82 @@ though it completed successfully server-side - the script's `timeout_s=1800`
 for the Base profile is too tight and should be raised (e.g. to 2400s)
 before further Base-checkpoint runs.
 
+## VRAM/timing test (distilled checkpoint, variant B) - with vs. without `mask_save`
+
+Codex's recommended smallest test before any router integration decision
+(read-only Codex exec session, 2026-10-04): Codex flagged that this
+standalone script's `mask_preview`/`mask_save` pair is an extra
+`OUTPUT_NODE=True` execution root that `build_router_graph.py`'s
+`masked_reference` wiring deliberately omits (to keep the generate/edit lazy
+switch working), so the standalone script's own VRAM/scheduling shape might
+not represent the router's actual topology. New script:
+`klein_vram_test1.py`, reusing `klein_test1_masked_reference.build()`'s new
+`include_mask_preview` parameter. Also replaces the prior VRAM-sampling
+method (`masking_test2_current_env.py`'s per-sample `nvidia-smi` respawn,
+which had real gaps up to 1.2-1.4s despite requesting 250ms) with a single
+long-lived `nvidia-smi --loop-ms=100` process - verified below to produce
+genuinely continuous ~109ms sampling, closing that measurement gap. Both
+conditions started from a clean `POST /free` cold floor (not cached), per
+Codex's instruction and this project's established VRAM-test methodology.
+
+| Condition | Wall time | Peak VRAM used | Min free VRAM | Sample gap (min/mean/max) | Samples |
+|---|---|---|---|---|---|
+| `with_mask_save` (standalone shape) | 19.6s | 15257 MiB | **721 MiB** | 0.106s / 0.109s / 0.113s | 186 |
+| `no_mask_save` (router's actual shape) | 16.1s | 15766 MiB | **212 MiB** | 0.105s / 0.109s / 0.114s | 154 |
+
+(Total VRAM on this card is 16303 MiB; `used + free` accounts for ~16303 -
+~325 MiB in both conditions, consistently, matching a fixed OS/driver/other-
+process baseline outside ComfyUI's own accounting.)
+
+**Sampling quality:** both conditions hit ~109ms mean spacing with a tight
+0.105-0.114s range - the new loop-mode sampler fixes the prior method's
+1.2-1.4s gap problem outright; the un-sampled blind spot between any two
+points is now bounded to roughly 110ms, not over a second.
+
+**Important, counter-intuitive finding: removing `mask_save`/`mask_preview`
+made the VRAM margin WORSE, not better.** Peak usage rose from 15257 to
+15766 MiB (+509 MiB) and the minimum free margin dropped from 721 to 212
+MiB when going from the standalone shape to the router's actual shape. This
+is not what a naive "fewer nodes = less memory" intuition would predict -
+removing those two cheap nodes evidently shifts ComfyUI's scheduling/
+allocator timing such that other buffers (likely VAE decode and/or sampler
+tensors) peak-overlap more than they did when mask_save's own execution
+gave the allocator a different ordering to work with. This was not derived
+analytically, just observed - the actual mechanism is not established here.
+
+**This means the number that matters for router integration is 212 MiB, not
+721 MiB, and 212 MiB is below the ~300 MiB safety margin this project has
+otherwise treated as the acceptable floor (see the router's own
+back-to-back-chain VRAM results, `RESULTS_RVchain.md`/`RESULTS_RVref.md`).**
+At n=1, this is one sample, not a proven worst case - the real floor could
+be tighter still (the unsampled gap between any two of the ~109ms-spaced
+points) or this run could be an unlucky outlier. Per Codex's stated
+acceptance criteria, this result does NOT clear the bar for an opt-in router
+integration attempt as-is - either the margin needs to be re-measured (n>1,
+ideally back-to-back without `/free` the way the router would actually be
+hit) to see if 212 MiB is typical or an outlier, or the masked_reference
+branch's VRAM footprint needs headroom (e.g. not loading SAM3 and the Klein
+UNet/CLIP simultaneously, or reserve-vram-style mitigation) before this is
+safe to wire into the router without risking an OOM under real traffic.
+
 ## Next steps (not yet done)
 
-1. Quantify the Base checkpoint's no-reference color-drift rate with a
-   larger repeat-seed sweep (n>=5) now that n=2 shows it is real but not
-   universal (1/2 seeds drifted).
-2. Test whether rewording the no-reference prompt (e.g. "Keep the masked
-   dress unchanged" instead of referencing a nonexistent "second reference
-   image") reduces or eliminates the drift - not yet tried.
+1. ~~Quantify the Base checkpoint's no-reference color-drift rate~~ - done
+   (n=4: 1/4 drift, see above). `PROMPT_D2` (reworded prompt) remains
+   untested as a mitigation candidate.
+2. Test `PROMPT_D2` (the reworded no-reference prompt) - not yet tried.
 3. ~~Raise `timeout_s` for the Base profile~~ - done (2400s).
-4. Add VRAM sampling (same method as `masking_test2_current_env.py`) to
-   this test, for both checkpoints.
-5. n>1 repeat-seed pass on the A/B/B2 (reference-present) variants too,
+4. ~~Add VRAM sampling~~ - done for the distilled checkpoint's masked_reference
+   mechanism (see VRAM/timing section above), **not yet done for the Base
+   checkpoint**.
+5. **Re-measure the router-representative (`no_mask_save`) VRAM condition at
+   n>1, ideally back-to-back without `/free` between runs (the way the
+   router would actually be hit)**, to determine whether the observed 212
+   MiB minimum margin (below this project's ~300 MiB safety floor) is
+   typical or an unlucky n=1 outlier - this blocks any router-integration
+   go/no-go decision per Codex's stated acceptance criteria.
+6. n>1 repeat-seed pass on the A/B/B2 (reference-present) variants too,
    before calling either checkpoint's positive result reliable rather than
    feasible.
-6. Flux.2 Dev + masking, as its own separate test (needs the source-latent
+7. Flux.2 Dev + masking, as its own separate test (needs the source-latent
    graph fix Codex identified).

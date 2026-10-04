@@ -9,7 +9,7 @@
     "unet": {
       "class_type": "UNETLoader",
       "inputs": {
-        "unet_name": "Flux.2 klein\\9B - Base\\flux-2-klein-base-9b.safetensors",
+        "unet_name": "Flux.2 klein\\9B\\snofsSexNudesAndOtherFunStuff_distilledV12Fp8.safetensors",
         "weight_dtype": "default"
       }
     },
@@ -65,25 +65,6 @@
         "keep_model_loaded": false,
         "add_background": "none",
         "detection_limit": -1
-      }
-    },
-    "mask_preview": {
-      "class_type": "MaskToImage",
-      "inputs": {
-        "mask": [
-          "sam3_seg",
-          0
-        ]
-      }
-    },
-    "mask_save": {
-      "class_type": "SaveImage",
-      "inputs": {
-        "images": [
-          "mask_preview",
-          0
-        ],
-        "filename_prefix": "ImageDirector_KleinTest1_base_mask"
       }
     },
     "noise_mask": {
@@ -165,70 +146,66 @@
           "decode",
           0
         ],
-        "filename_prefix": "ImageDirector_KleinTest1_base"
+        "filename_prefix": "ImageDirector_KleinTest1_distilled"
       }
     },
-    "noise": {
-      "class_type": "RandomNoise",
+    "ref": {
+      "class_type": "LoadImage",
       "inputs": {
-        "noise_seed": 555555
+        "image": "imgdir_masktest2_ref_red.png"
       }
     },
-    "guider": {
-      "class_type": "CFGGuider",
+    "ref_latent": {
+      "class_type": "VAEEncode",
+      "inputs": {
+        "pixels": [
+          "ref",
+          0
+        ],
+        "vae": [
+          "vae",
+          0
+        ]
+      }
+    },
+    "pos_ref_ref": {
+      "class_type": "ReferenceLatent",
+      "inputs": {
+        "conditioning": [
+          "pos_ref_src",
+          0
+        ],
+        "latent": [
+          "ref_latent",
+          0
+        ]
+      }
+    },
+    "sample": {
+      "class_type": "KSampler",
       "inputs": {
         "model": [
           "unet",
           0
         ],
         "positive": [
-          "pos_ref_src",
+          "pos_ref_ref",
           0
         ],
         "negative": [
           "neg_ref_src",
           0
         ],
-        "cfg": 4
-      }
-    },
-    "sampler_select": {
-      "class_type": "KSamplerSelect",
-      "inputs": {
-        "sampler_name": "dpmpp_sde"
-      }
-    },
-    "scheduler": {
-      "class_type": "Flux2Scheduler",
-      "inputs": {
-        "steps": 34,
-        "width": 1024,
-        "height": 1024
-      }
-    },
-    "sample": {
-      "class_type": "SamplerCustomAdvanced",
-      "inputs": {
-        "noise": [
-          "noise",
-          0
-        ],
-        "guider": [
-          "guider",
-          0
-        ],
-        "sampler": [
-          "sampler_select",
-          0
-        ],
-        "sigmas": [
-          "scheduler",
-          0
-        ],
         "latent_image": [
           "noise_mask",
           0
-        ]
+        ],
+        "seed": 424242,
+        "steps": 4,
+        "cfg": 1,
+        "sampler_name": "euler",
+        "scheduler": "simple",
+        "denoise": 1.0
       }
     }
   }

@@ -57,3 +57,13 @@ def assert_queue_empty(base: str = BASE) -> None:
     pending = len(q.get("queue_running", [])) + len(q.get("queue_pending", []))
     if pending:
         raise RuntimeError(f"queue not empty: {json.dumps(q)}")
+
+
+def free(base: str = BASE) -> None:
+    # POST /free {"unload_models": true, "free_memory": true} - ComfyUI's
+    # own clean-VRAM-baseline endpoint, used before cold-floor VRAM tests
+    # (see tests/vram/ RESULTS_*.md's established methodology).
+    data = json.dumps({"unload_models": True, "free_memory": True}).encode("utf-8")
+    req = urllib.request.Request(f"{base}/free", data=data, headers={"Content-Type": "application/json"})
+    with urllib.request.urlopen(req, timeout=30):
+        pass
