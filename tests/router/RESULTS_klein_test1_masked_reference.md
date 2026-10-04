@@ -148,12 +148,37 @@ prompt gives it no positive reason to change color. n=4 is still a small
 sample (a true ~25% rate has wide uncertainty at this n - anywhere from
 roughly 5% to 55% would not be surprising), but it is now large enough to
 say the drift is real and non-trivial, not a one-off fluke, while also
-confirming most seeds do preserve color correctly. `PROMPT_D2` (added to
-`klein_test1_masked_reference.py`, not yet run) rewords the no-reference
-prompt to not reference a nonexistent "second reference image" ("Keep the
-masked dress unchanged. Do not alter its color or material.") as an untested
-mitigation candidate for this drift - worth testing before relying on Base's
-no-reference masked-edit behavior in any production use.
+confirming most seeds do preserve color correctly.
+
+**`PROMPT_D2` mitigation test (2026-10-04):** `PROMPT_D2` rewords the
+no-reference prompt to not reference a nonexistent "second reference image"
+("Keep the masked dress unchanged. Do not alter its color or material.").
+Run on the Base checkpoint at seed 424242 - the exact seed that drifted to
+teal under the original `PROMPT_B`-reused wording -
+`ImageDirector_KleinTest1_base_00008_.png`. **Result: the dress stayed blue.
+The reworded prompt fixed the known-failure case at this seed.** This is
+n=1 (one seed, the specific one already known to fail) - it shows the
+dangling "second reference image" phrase is at least *a* contributing factor
+worth removing, but does not by itself prove the reworded prompt eliminates
+the drift rate at other seeds (D2 has not been run on the 3 seeds that
+already stayed clean under the original prompt). Testing D2 across the same
+4 seeds (424242/777777/111111/555555) used for the original D sweep would
+give a direct head-to-head comparison before treating this as a confirmed
+fix rather than one promising data point.
+
+**Timing anomaly, noted but not resolved:** this D2 run completed in ~195s
+(verified via ComfyUI's own `/history` execution_start/execution_success
+timestamps, not just wall-clock around the HTTP call - genuine full 34-step
+execution, not a cache hit; `execution_cached` only listed model-loader and
+mask nodes, not sampling/decode), vs. the 17-27 minute range observed for
+every earlier Base-profile run today. The likely explanation: this run
+immediately followed several other back-to-back Base/distilled executions
+today with no `/free` in between, so CUDA context, cuDNN kernel selection,
+and PyTorch's allocator pool were already warm - consistent with (and a
+much larger version of) the same warm-state effect seen in the back-to-back
+VRAM chain test above. Not independently confirmed as the cause; flagged
+here rather than silently revising the "17-27 min" estimate down, since this
+is one sample against many slower ones.
 
 **Timing observed (not yet systematically measured):** roughly 17-27 minutes
 wall-clock per run on this GPU, dominated by the 34-step `dpmpp_sde` sampling
