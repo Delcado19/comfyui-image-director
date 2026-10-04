@@ -139,19 +139,58 @@ runs. Cause not isolated (could be VRAM state left over from the earlier
 session, could be run-to-run variance) - flagged as a real open question
 for the still-missing VRAM/timing characterization, not resolved here.
 
+## Material/texture variant (M) - real photographic reference
+
+Flat color swatches (B/B2) only prove color transfer, not material/texture
+transfer - flagged as the key gap in both the "Evidence rules self-check"
+below and `RESULTS_ref_weight.md`'s own open item ("Fotografische/
+materialbasierte statt Flat-Color-Referenz - noch offen, günstigster
+nächster Test"). Variant M reuses PROMPT_B's exact wording (material not
+named) with a **user-supplied real photograph** of black leather (visible
+grain, wrinkles, specular highlights - 3000x2000, not a synthetic/AI-
+generated texture) as the reference, against variant D's existing
+no-reference result as the ablation control.
+
+**Operational issue found and fixed first**: the first attempt (unscaled
+3000x2000 reference, matching the then-current "no scaling on reference"
+convention inherited from the 512x512 flat swatches) forced the entire
+GGUF UNET to offload to CPU (`comfyui.log`: "0.00 MB usable, 0.00 MB
+loaded, 18969.81 MB offloaded") because the reference's own latent became
+far larger than the sampled latent - the run was still progressing after
+20+ minutes with no realistic end in sight and was interrupted via
+`/interrupt`. Fixed by adding `ImageScaleToTotalPixels` (0.25 MP, chosen to
+match the original 512x512 swatches almost exactly - a no-op for A/B/D/B2,
+which did not need to be re-run) before the reference's `VAEEncode`,
+applied to every variant's reference image, not just M. Re-run loaded
+normally (6.2 GB on GPU, consistent with the earlier successful A/B/D/B2
+runs) and completed.
+
+**Result**: the masked dress shows visible leather grain texture, wrinkle
+shading, and specular highlights consistent with the reference photo - not
+a flat black fill. This is a materially stronger result than the B/B2
+color swatches: **texture/material structure transferred, not just a
+solid color**. Locality held (face, pose, background unchanged, same as
+all prior variants).
+
 ## Evidence rules self-check
 
-- **Live runtime results**: all 5 generations (baseline + A/B/D/B2), this
-  session, this installation, `status_completed=true`, verified by fetching
-  and viewing each output image via ComfyUI's `/view` API - not inferred
-  from log text alone.
-- **Visual test result** for color-follow and locality: performed (images
-  viewed directly), not assumed from graph construction.
-- **Not yet established**: material transfer (only color swatches tested -
-  a plain color swap is a weaker claim than "transfers material/texture"),
-  n>1 (single seed only), VRAM/timing characterization (deliberately out of
-  scope for this feasibility pass per Codex - "old margins don't transfer"
-  means a real number is still needed before any further step), pixel-level
+- **Live runtime results**: all 7 generations (baseline + A/B/D/B2 at two
+  seeds + M), this session, this installation, `status_completed=true`,
+  verified by fetching and viewing each output image via ComfyUI's `/view`
+  API - not inferred from log text alone.
+- **Visual test result** for color-follow, material/texture transfer, and
+  locality: performed (images viewed directly), not assumed from graph
+  construction.
+- **Now established** (previously open): material/texture transfer - a
+  real photographic reference (not a flat color swatch) produced visible
+  grain/wrinkle/specular structure on the masked region, not just a flat
+  fill. Single run only (seed 424242, not cross-seed-checked the way
+  B/D/B2 were).
+- **Still not established**: n>1 for the material variant specifically
+  (only run once), VRAM/timing characterization (deliberately out of scope
+  for this feasibility pass per Codex - "old margins don't transfer" means
+  a real number is still needed before any further step; the M variant's
+  own VRAM near-miss, see above, makes this more urgent), pixel-level
   locality diff against the VAE baseline (done visually, not numerically).
 - **GGUF-specific**: this result is evidence for the installed GGUF Q4_K_M
   checkpoint specifically, not Dev precision variants generally - consistent
@@ -170,17 +209,23 @@ closed investigation's finding for the empty-latent mechanism - correctly
 so, since it is a different graph, not a re-run of the same one. The
 second-seed cross-check (777777) reproduces all three causal results
 (B/D/B2), raising confidence from a single sample to 2/2 agreement.
+**Material/texture transfer is also confirmed** (variant M): a real
+photographic leather reference produced visible grain/wrinkle/specular
+structure on the masked region, not just a flat color fill - this is the
+stronger claim `RESULTS_ref_weight.md` had left open since the original
+case-3 investigation closed.
 
 ## Remaining risks / open items
 
-- n=2 (two seeds, both agreeing) - stronger than the original n=1, but
-  still not a reliability estimate. Klein's own history (Base-checkpoint
-  D-variant, 1/4 drift) shows seed-dependent failure modes can stay hidden
-  at n=2 too.
-- Material (texture/fabric) transfer untested - only flat color swatches
-  used. A material-pattern reference (per the original case-3 motivation
-  this whole investigation traces back to) is a materially different, not
-  yet run, test.
+- n=2 for the color variants (two seeds, both agreeing) - stronger than
+  the original n=1, but still not a reliability estimate. Klein's own
+  history (Base-checkpoint D-variant, 1/4 drift) shows seed-dependent
+  failure modes can stay hidden at n=2 too. The material variant (M) is
+  still n=1, not yet cross-seed-checked.
+- A real high-resolution reference needs explicit scaling or it can force
+  the entire UNET off the GPU (see the M variant's operational issue,
+  above) - now fixed in the script, but worth remembering if this graph is
+  ever extended to accept arbitrary user-supplied references.
 - No VRAM/duration measurement - GGUF dequantization overhead and the
   larger Dev model are unknowns here; Klein's router-integration VRAM
   margins do not transfer to this graph shape. The seed-777777 run's

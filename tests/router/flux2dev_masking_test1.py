@@ -54,9 +54,18 @@ Deliberately NOT changed from the first attempt (separate, untested
 variables - do not introduce simultaneously per Codex):
 - No partial-denoise / sigma-schedule adjustment inside the mask.
 - No VLM captioning, no post-hoc color correction.
-- No image scaling applied to the reference image (matches ab_flux2dev.py
-  and klein_test1_masked_reference.py precedent - source is the only image
-  scaled, to keep the latent/mask/scheduler width-height consistent).
+
+Material/texture variant "M" (added 2026-10-04): flat color swatches (B/B2)
+only prove color transfer - per RESULTS_ref_weight.md's own open item
+("Fotografische/materialbasierte statt Flat-Color-Referenz") and Codex's
+note that swatches "beweisen Farbtransfer, keinen generischen Material-
+oder Kleidungswechsel", this needed a genuine photographic texture
+reference, not a synthetic one. Uses a user-supplied real photo (black
+leather, 3000x2000, visible grain/wrinkle structure) as the reference -
+reuses PROMPT_B's exact wording (no material named) and variant D's
+existing no-reference result as the shared ablation control (no separate
+ablation run needed - D only depends on there being no reference at all,
+not on which reference the B-style run used).
 """
 import json
 import sys
@@ -67,6 +76,7 @@ from comfy_submit import submit, poll_history, assert_queue_empty, free  # noqa:
 SOURCE_IMAGE = "imgdir_masktest2_source_bluedress.png"
 REF_IMAGE_RED = "imgdir_masktest2_ref_red.png"
 REF_IMAGE_GREEN = "imgdir_masktest2_ref_green.png"
+REF_IMAGE_LEATHER = "imgdir_masktest2_ref_leather.png"
 SAM3_PROMPT = "the woman's dress"
 
 UNET_NAME = r"Flux.2 Dev\flux2_dev-Q4_K_M.gguf"
@@ -130,7 +140,18 @@ def build(seed: int, prompt_text: str, ref_image: str | None, include_mask_previ
 
     if ref_image is not None:
         graph["ref"] = {"class_type": "LoadImage", "inputs": {"image": ref_image}}
-        graph["ref_latent"] = {"class_type": "VAEEncode", "inputs": {"pixels": ["ref", 0], "vae": ["vae", 0]}}
+        # Scaled to ~0.25 MP (matches the original 512x512 flat-color swatches
+        # almost exactly, so this is a no-op for them) - added after variant M
+        # (leather.png, 3000x2000 = 6 MP) with no scaling forced the entire
+        # UNET to offload to CPU (comfyui.log: "0.00 MB loaded, 18969.81 MB
+        # offloaded") because the reference's own latent became far larger
+        # than the sampled latent itself. Unscaled was fine for small swatches
+        # but does not generalize to a real high-res photo reference.
+        graph["ref_scale"] = {
+            "class_type": "ImageScaleToTotalPixels",
+            "inputs": {"image": ["ref", 0], "upscale_method": "lanczos", "megapixels": 0.25, "resolution_steps": 16},
+        }
+        graph["ref_latent"] = {"class_type": "VAEEncode", "inputs": {"pixels": ["ref_scale", 0], "vae": ["vae", 0]}}
         graph["pos_ref_ref"] = {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["pos_ref_src", 0], "latent": ["ref_latent", 0]}}
         positive_input = ["pos_ref_ref", 0]
     else:
@@ -214,6 +235,7 @@ if __name__ == "__main__":
             "D": (PROMPT_B, None),
             "D2": (PROMPT_D2, None),
             "B2": (PROMPT_B, REF_IMAGE_GREEN),
+            "M": (PROMPT_B, REF_IMAGE_LEATHER),
         }
         prompt_text, ref_image = variants[variant]
         run_variant(variant, seed, prompt_text, ref_image)
