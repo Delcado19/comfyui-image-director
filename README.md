@@ -1,5 +1,7 @@
 # ComfyUI Image Director
 
+![ComfyUI Image Director](.github/social-preview.jpg)
+
 A local, modular router for ComfyUI: natural-language instructions and
 reference images in, a structured plan out, routed to the right
 generation or editing workflow - one graph, one queue press.
