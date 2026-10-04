@@ -441,73 +441,89 @@ before the UNET's own ramp takes the peak to 15.3-15.5 GB. This reframed
 the mitigation target from "unload SAM3 earlier" (already happens) to
 "smooth the CLIP->UNET handoff."
 
-**Mitigation tested:** a `VRAM_Debug` node (`comfyui-kjnodes`, already
-installed and used in the user's own Z-Image Base workflows) inserted
-between the completed positive-conditioning chain and the sampler, with
-`empty_cache=True, gc_collect=True, unload_all_models=False`. Forced into
-the dependency chain via the same pattern this project used for the E2/E3
-negative-prompt ordering fix (`StringSubstring` in `build_router_graph.py`):
-`VRAM_Debug`'s `any_input`/`any_output` (type `*`) pass the positive
-conditioning through unchanged while running the cache-clear as a side
-effect, so the sampler (and thus UNET) cannot proceed until the clear has
-happened. `unload_all_models` deliberately left `False` - `True` would risk
-unloading UNET too if it had already started loading concurrently,
-forcing a wasteful reload. New script: `klein_vram_mitigation_test1.py`
+**Mitigation tested (round 1, `profile="base"`):** a `VRAM_Debug` node
+(`comfyui-kjnodes`, already installed and used in the user's own Z-Image
+Base workflows) inserted between the completed positive-conditioning chain
+and the sampler, with `empty_cache=True, gc_collect=True,
+unload_all_models=False`. New script: `klein_vram_mitigation_test1.py`
 (does graph surgery on `klein_test1_masked_reference.build()`'s output
 rather than modifying that validated script).
 
-| Run | Free VRAM | Peak VRAM |
+| Run (Base checkpoint) | Free VRAM | Peak VRAM |
 |---|---|---|
 | Baseline (no mitigation) | 445 MiB | 15533 MiB |
 | Mitigated (`VRAM_Debug`, conservative) | 459 MiB | 15519 MiB |
-| Mitigated (`PixaromaFreeVram`, mode="all") | **1210 MiB** | **14768 MiB** |
+| Mitigated (`PixaromaFreeVram`, mode="all") | 1210 MiB | 14768 MiB |
 
-**`VRAM_Debug` verdict: no meaningful effect** (+14 MiB, within noise -
-compare to the 212-967 MiB spread already seen across unmitigated runs at
-the same conditions). `empty_cache`+`gc_collect` alone does not recover the
-margin.
+`VRAM_Debug` (conservative): no meaningful effect (+14 MiB, noise).
+`PixaromaFreeVram` (mode="all", found via source read of `node_free_vram.py`
+- its hidden `FreeVramState` default is `mode="all"`, running
+`mm.unload_all_models()` + `gc.collect()` + `mm.soft_empty_cache(True)`):
+nearly tripled the margin (445 -> 1210 MiB).
 
-**`PixaromaFreeVram` verdict: real, substantial improvement.** Source read
-first (`node_free_vram.py` + `_free_vram_helpers.py`, both in
-`ComfyUI-Pixaroma`, per project discipline - not just the node's
-description): its hidden `FreeVramState` field's documented default
-(`"{}"` -> `DEFAULT_STATE`) is `mode="all"`, which runs `mm.unload_all_models()`
-+ `gc.collect()` + `mm.soft_empty_cache(True)` - the full unload
-`VRAM_Debug`'s test deliberately avoided, done safely here because at this
-point in the graph (right after text encoding, before the sampler needs
-UNET) nothing but CLIP/VAE has actually loaded yet, so there is nothing
-else for `unload_all_models()` to wrongly evict. Inserted via the same
-conditioning-passthrough dependency pattern as `VRAM_Debug` (its `value`
-input/output pair, type `*`, passes the conditioning through unchanged
-while running the free as a side effect - the node is a documented no-op
-when `value` is left unwired, so wiring it in is what makes it act).
-`FreeVramState` was deliberately omitted from the submitted graph so the
-node's own schema default applies, rather than guessing a different
-explicit state. Result: **free VRAM margin nearly tripled (445 -> 1210 MiB,
-+765 MiB) and peak usage dropped by the same amount (15533 -> 14768 MiB)**.
-Output image still correct (red dress), confirming `unload_all_models()`
-didn't corrupt anything mid-generation. This is the first mitigation tested
-that actually moves the needle, and by a wide enough margin (1210 MiB is
-comfortably above the ~300 MiB floor, well clear of every unmitigated
-cold-start sample's range of 212-967 MiB) that it looks like a real fix,
-not noise - though still only n=1 for the mitigated condition.
+**Error caught by Codex (round-2 review), corrected here:** the table above
+is **Base-checkpoint evidence only** -
+`klein_vram_mitigation_test1.py`'s `run()` hardcoded `profile="base"` for
+all three rows. The actual router-integration target agreed with Codex is
+`klein_distilled`, not Base - this round-1 result said nothing about the
+distilled checkpoint's margin, despite an earlier draft of this section
+wrongly comparing the 1210 MiB figure against the *distilled* checkpoint's
+n=5 cold-start range (212-967 MiB) as if they were the same population.
+Also flagged: `PixaromaFreeVram` is `output_node: true`, the same property
+that made `mask_save` an extra execution root breaking the router's lazy
+generate/edit switch - Codex confirmed this is a real architectural
+conflict for router use (its upstream Klein-encoding branch would execute
+even when the runtime analyzer picks "generate"), not just a theoretical
+concern, so `PixaromaFreeVram` is not usable inside the router as-is.
 
-**Updated overall verdict:** the earlier structural-overlap hypothesis
-(ComfyUI's dynamic loader needing CLIP and UNET briefly coexisting during
-the handoff) is now better supported in its SPECIFICS - the fact that an
-explicit `unload_all_models()` (not just `empty_cache`/`gc_collect`) is what
-it took to recover most of the margin suggests ComfyUI's own automatic
-eviction during that handoff is incomplete or delayed, and forcing a
-synchronous full unload at the right graph position closes most of the
-gap. `--reserve-vram` (this project's previously-proven mitigation for a
-similar problem, but requiring a restart of the shared ComfyUI instance,
-not done without asking) is no longer the only live option - this graph-
-level fix is testable and effective without touching ComfyUI's launch
-configuration at all. `PixaromaFreeVram` is `output_node: true` - the same
-property that made `mask_save` an extra execution root breaking the
-router's lazy generate/edit switch (see `build_router_graph.py`'s
-docstring) - using it inside the actual router (not just this standalone
-test) would need the same care when the router integration is attempted.
+**Mitigation tested (round 2, corrected): `profile="distilled"`, properly
+gated, `VRAM_Debug(unload_all_models=True)`.** `VRAM_Debug` has no
+`OUTPUT_NODE=True`, avoiding the lazy-switch conflict. Codex also caught a
+design flaw in the round-1 gate: it only waited for the *positive*
+conditioning, which doesn't guarantee negative encoding has finished -
+CLIP could still reload for the negative prompt after an early unload,
+recreating the squeeze right before UNET loads. Fix (two-stage, fully
+type-safe - a first attempt using `VRAM_Debug`'s `model_pass` slot to
+forward the CLIP model failed ComfyUI's validation: `model_pass` is
+declared type `MODEL`, the diffusion-UNET type, not `CLIP` - a genuine
+type mismatch, not just a sequencing issue):
+
+1. `SomethingToString` (`comfyui-kjnodes`, any type -> STRING) on
+   `pos_ref_ref`'s CONDITIONING output, then `StringSubstring(start=0,
+   end=0)` back to an empty string - routed into `neg_text`'s `text` input
+   in place of the literal `""`. Same dependency-injection pattern as this
+   project's existing E2/E3 fix (`StringSubstring` in
+   `build_router_graph.py`), applied to force `neg_text` to run after
+   `pos_ref_ref` while leaving its actual encoding behavior unchanged
+   (`StringSubstring` with `start=end=0` always yields `""`, the same text
+   `neg_text` used before).
+2. `VRAM_Debug(unload_all_models=True, gc_collect=True, empty_cache=True)`
+   gated on `neg_ref_src` (now guaranteed to only be ready after both
+   encodings complete), feeding the sampler's `negative` input.
+
+| Run (distilled checkpoint) | Free VRAM | Peak VRAM |
+|---|---|---|
+| Baseline (no mitigation) | 369 MiB | 15609 MiB |
+| Mitigated (`VRAM_Debug`, fully gated, `unload_all_models=True`) | **2333 MiB** | **13645 MiB** |
+
+**Log-correlation evidence (Codex explicitly asked for this, not just an
+assumed-safe position):** `user/comfyui.log` for this exact run shows CLIP
+(`Flux2TEModel_`) requested and staged at 13:57:44.632, then referenced
+again at 13:57:45.658 (the second `CLIPTextEncode` call, for `neg_text` -
+no unload in between, confirming the ordering fix worked and CLIP was not
+reloaded from scratch), then `VRAMdebug: free memory before: 6,964,718,360`
+/ `after: 15,387,688,876` at 13:57:45.880-46.490 (freed ~8.42 GB), and only
+then `Requested to load Flux2` (the UNET) at 13:57:46.510 - CLIP was
+genuinely GPU-resident and used by both encodings before the gate fired,
+exactly as designed, not just assumed from the graph position.
+
+**Verdict: this is the proven, router-safe mitigation.** Over 6x the
+baseline margin (369 -> 2333 MiB), comfortably clear of the ~300 MiB floor,
+using a node without the lazy-switch conflict that ruled out
+`PixaromaFreeVram`. Output image still correct (red dress). n=1 for this
+specific gated run - a repeat would still be worth doing before calling the
+margin question fully closed, but this clears Codex's stated acceptance bar
+for proceeding with the first router-integration attempt.
 
 ## Next steps (not yet done)
 
@@ -522,15 +538,20 @@ test) would need the same care when the router integration is attempted.
    sections above). Base: n=1, 637 MiB free, within distilled's n=5 range.
 5. ~~Re-measure the router-representative (`no_mask_save`) VRAM condition
    back-to-back without `/free`, extend cold-start to n>2, find a
-   mitigation~~ - done. Finding: back-to-back usage is NOT the risk (margin
-   improves to 2100+ MiB); the cold-start-after-`/free` case was the tight
-   point (n=5, 212-967 MiB, 1/5 below the ~300 MiB floor) **and is now
-   mitigated**: `PixaromaFreeVram` (mode="all") raised a representative
-   cold-start sample from 445 to 1210 MiB free (n=1 for the mitigated
-   condition - a larger sample would still be worth running before fully
-   retiring this as a solved problem, but the single result is well clear
-   of the floor). `VRAM_Debug` (conservative, no `unload_all_models`) was
-   tried first and had no effect - the fix needed the full unload.
+   router-safe mitigation~~ - done. Finding: back-to-back usage is NOT the
+   risk (margin improves to 2100+ MiB); the cold-start-after-`/free` case
+   was the tight point (distilled n=5, 212-967 MiB, 1/5 below the ~300 MiB
+   floor) **and is now mitigated on the actual integration target
+   (distilled)**: `VRAM_Debug(unload_all_models=True)`, gated on BOTH text
+   encodings completing (not just positive - see the mitigation section's
+   round-2 correction), raised a representative distilled cold-start sample
+   from 369 to 2333 MiB free, confirmed via log correlation. (Round 1 of
+   this test mistakenly ran on the Base checkpoint and found
+   `PixaromaFreeVram` effective there, but that node's `output_node=true`
+   makes it unsafe for the router's lazy switch - superseded by the
+   corrected `VRAM_Debug` result.) n=1 for the mitigated distilled
+   condition - a repeat would still be worth doing before calling this
+   fully closed.
 6. ~~n>1 repeat-seed pass on the A/B/B2 (reference-present) variants~~ -
    done for the **distilled** checkpoint (n=3, 0 failures, see above).
    **Still open for the Base checkpoint** (A/B/B2 remain n=1) - higher

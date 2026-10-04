@@ -63,6 +63,60 @@ def inject_vram_debug(graph: dict, positive_node_ref: list) -> dict:
     return graph
 
 
+def inject_vram_debug_full_gated(graph: dict) -> dict:
+    """Corrected mitigation (2026-10-04, after Codex round-2 review caught two
+    errors in the first attempt): (1) the original test ran profile="base",
+    not "distilled" - the actual router-integration target is the distilled
+    checkpoint, so the earlier 445->1210 MiB result does not demonstrate
+    anything about distilled's margin; (2) gating only on the POSITIVE
+    conditioning doesn't guarantee negative encoding has finished - CLIP
+    could still reload for the negative prompt after an early unload,
+    recreating the same squeeze right before UNET loads.
+
+    Two-stage fix, both using VRAM_Debug (not PixaromaFreeVram - its
+    OUTPUT_NODE=True is a confirmed architectural conflict with the router's
+    lazy generate/edit switch, per Codex's review):
+
+    Stage 1 (ordering only, type-safe): forces neg_text to run AFTER
+    pos_ref_ref, via the same class of dependency-injection fix this
+    project already uses (StringSubstring in build_router_graph.py's E2/E3
+    fix) - NOT via VRAM_Debug's model_pass, which a live run proved is
+    declared type MODEL (the diffusion UNET type), not CLIP, so wiring a
+    CLIP reference through it fails ComfyUI's validation
+    (return_type_mismatch) even though both are "model-like" conceptually.
+    Bridge instead: SomethingToString (comfyui-kjnodes, any type -> STRING)
+    on pos_ref_ref's CONDITIONING, then StringSubstring(start=0, end=0) to
+    get back to the exact empty string neg_text always used - a genuine
+    STRING-typed dependency chain, so neg_text's "clip" input stays
+    correctly wired to the real clip loader, untouched.
+
+    Stage 2 (the real mitigation): VRAM_Debug with unload_all_models=True,
+    gc_collect=True, empty_cache=True, gated on neg_ref_src's conditioning -
+    which is now guaranteed to only be ready after BOTH text encodings are
+    complete, thanks to stage 1. Its output feeds the sampler's "negative"
+    input, so KSampler cannot start until the full unload has happened.
+    """
+    pos_ref_ref_ref = ["pos_ref_ref", 0]
+    neg_ref_src_ref = ["neg_ref_src", 0]
+
+    graph["pos_done_str"] = {"class_type": "SomethingToString", "inputs": {"input": pos_ref_ref_ref}}
+    graph["neg_text_gated"] = {
+        "class_type": "StringSubstring",
+        "inputs": {"string": ["pos_done_str", 0], "start": 0, "end": 0},
+    }
+    graph["neg_text"]["inputs"]["text"] = ["neg_text_gated", 0]
+
+    graph["vram_debug_final"] = {
+        "class_type": "VRAM_Debug",
+        "inputs": {
+            "empty_cache": True, "gc_collect": True, "unload_all_models": True,
+            "any_input": neg_ref_src_ref,
+        },
+    }
+    graph["sample"]["inputs"]["negative"] = ["vram_debug_final", 0]
+    return graph
+
+
 def inject_pixaroma_free_vram(graph: dict, positive_node_ref: list) -> dict:
     """Insert PixaromaFreeVram (ComfyUI-Pixaroma) in the same position. Source
     read (node_free_vram.py + _free_vram_helpers.py) before use, per project
@@ -87,22 +141,25 @@ def inject_pixaroma_free_vram(graph: dict, positive_node_ref: list) -> dict:
     return graph
 
 
-def run(label: str, mitigation: str, out_dir: Path):
-    # mitigation: "none" / "vram_debug" / "pixaroma"
+def run(label: str, mitigation: str, out_dir: Path, profile: str = "base"):
+    # mitigation: "none" / "vram_debug" / "pixaroma" / "vram_debug_full"
     assert_queue_empty()
     free()
 
-    graph_dict = build(SEED, PROMPT_B, REF_IMAGE_RED, profile="base", include_mask_preview=False)
+    graph_dict = build(SEED, PROMPT_B, REF_IMAGE_RED, profile=profile, include_mask_preview=False)
     graph = graph_dict["prompt"]
+    sampler_key = "guider" if profile == "base" else "sample"
 
     if mitigation == "vram_debug":
-        original_positive = graph["guider"]["inputs"]["positive"]
+        original_positive = graph[sampler_key]["inputs"]["positive"]
         graph = inject_vram_debug(graph, original_positive)
-        graph["guider"]["inputs"]["positive"] = ["vram_debug", 0]
+        graph[sampler_key]["inputs"]["positive"] = ["vram_debug", 0]
     elif mitigation == "pixaroma":
-        original_positive = graph["guider"]["inputs"]["positive"]
+        original_positive = graph[sampler_key]["inputs"]["positive"]
         graph = inject_pixaroma_free_vram(graph, original_positive)
-        graph["guider"]["inputs"]["positive"] = ["pixaroma_free_vram", 0]
+        graph[sampler_key]["inputs"]["positive"] = ["pixaroma_free_vram", 0]
+    elif mitigation == "vram_debug_full":
+        graph = inject_vram_debug_full_gated(graph)
 
     csv_path = out_dir / f"vram_log_mitigation1_{label}.csv"
     hist_path = out_dir / f"history_mitigation1_{label}.json"
@@ -147,6 +204,15 @@ def run(label: str, mitigation: str, out_dir: Path):
 if __name__ == "__main__":
     out_dir = Path("tests/router/runs")
     out_dir.mkdir(parents=True, exist_ok=True)
-    label = sys.argv[1]  # "baseline" / "mitigated" (VRAM_Debug) / "pixaroma"
-    mitigation = {"baseline": "none", "mitigated": "vram_debug", "pixaroma": "pixaroma"}[label]
-    run(label, mitigation=mitigation, out_dir=out_dir)
+    label = sys.argv[1]  # "baseline"/"mitigated"/"pixaroma" (base profile) or
+    # "distilled_baseline"/"distilled_gated" (distilled profile, corrected
+    # per Codex round-2 review: the actual router-integration target)
+    config = {
+        "baseline": ("none", "base"),
+        "mitigated": ("vram_debug", "base"),
+        "pixaroma": ("pixaroma", "base"),
+        "distilled_baseline": ("none", "distilled"),
+        "distilled_gated": ("vram_debug_full", "distilled"),
+    }[label]
+    mitigation, profile = config
+    run(label, mitigation=mitigation, out_dir=out_dir, profile=profile)
