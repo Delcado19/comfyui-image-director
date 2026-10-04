@@ -213,14 +213,60 @@ otherwise treated as the acceptable floor (see the router's own
 back-to-back-chain VRAM results, `RESULTS_RVchain.md`/`RESULTS_RVref.md`).**
 At n=1, this is one sample, not a proven worst case - the real floor could
 be tighter still (the unsampled gap between any two of the ~109ms-spaced
-points) or this run could be an unlucky outlier. Per Codex's stated
-acceptance criteria, this result does NOT clear the bar for an opt-in router
-integration attempt as-is - either the margin needs to be re-measured (n>1,
-ideally back-to-back without `/free` the way the router would actually be
-hit) to see if 212 MiB is typical or an outlier, or the masked_reference
-branch's VRAM footprint needs headroom (e.g. not loading SAM3 and the Klein
-UNet/CLIP simultaneously, or reserve-vram-style mitigation) before this is
-safe to wire into the router without risking an OOM under real traffic.
+points) or this run could be an unlucky outlier. This did not by itself
+clear Codex's stated acceptance criteria for an opt-in router integration
+attempt - the back-to-back chain test below was run to find out whether 212
+MiB is typical or an outlier.
+
+### Back-to-back chain (no `/free` between runs)
+
+Three `no_mask_save` runs in a row, only the first starting from `/free`,
+matching how the router would actually be hit by consecutive real requests
+(per Codex's explicit recommendation and this project's established
+back-to-back-chain discipline). **First attempt was invalid and is not
+reported as data**: using the identical seed/graph for all three runs made
+ComfyUI's own node-level caching turn runs 2 and 3 into near-instant cache
+hits (0.5s wall time, `execution_cached` listed all 18 nodes including the
+KSampler itself) - this measured nothing about real back-to-back VRAM
+behavior and was caught before being written up. Fixed by giving each chain
+run a different seed (424243/424244/424245): this still lets the UNET/CLIP/
+VAE/SAM3 loaders stay cached across runs (as real back-to-back router
+traffic would), while forcing genuine re-execution of sampling, VAE decode,
+and SaveImage each time.
+
+| Run | Seed | Wall time | Peak VRAM used | Min free VRAM |
+|---|---|---|---|---|
+| 1 (fresh from `/free`) | 424243 | 15.7s | 15611 MiB | 367 MiB |
+| 2 (back-to-back) | 424244 | 6.7s | 13803 MiB | **2175 MiB** |
+| 3 (back-to-back) | 424245 | 7.2s | 13809 MiB | **2169 MiB** |
+
+**Verdict: the margin gets better across the chain, not worse.** The first
+post-`/free` execution is the tight point (367 MiB here vs. 212 MiB in the
+earlier single-run measurement - two independent samples of the same
+condition straddling the ~300 MiB threshold, consistent with real n=1-2
+variance, not a contradiction). Runs 2 and 3 - genuine back-to-back
+executions with no `/free` between them - both land above 2100 MiB free,
+a large and stable improvement over run 1. The likely mechanism (not proven
+here, just a plausible read): the first execution after `/free` pays a
+one-time cost - CUDA context/allocator warmup, PyTorch's caching allocator
+building its memory pool, SAM3's first load - that subsequent back-to-back
+requests don't repeat once that pool exists. **This reframes the earlier
+concern: the risk is concentrated in the first request after a VRAM-clearing
+event (server start, a `/free` call, or a different heavy workload having
+just evicted this graph's models), not in sustained back-to-back router
+usage, which this data suggests is actually safer than the cold-start case.**
+Two independent cold-start samples (212 MiB, 367 MiB) both sit close to or
+under the 300 MiB floor - that first-request risk is not resolved and
+should still gate any router integration decision, but it is a narrower,
+better-understood problem than "back-to-back usage degrades VRAM margin,"
+which this chain test does not support.
+
+This is still a single 3-run chain (not repeated chains) and the cold-start
+condition has only n=2 - both would benefit from more samples before
+treating either number as a stable estimate, but the qualitative finding
+(back-to-back doesn't make things worse; cold-start is the tight point) is
+unlikely to flip with more data given how large the gap is (367/212 MiB vs.
+2100+ MiB).
 
 ## Next steps (not yet done)
 
@@ -232,12 +278,15 @@ safe to wire into the router without risking an OOM under real traffic.
 4. ~~Add VRAM sampling~~ - done for the distilled checkpoint's masked_reference
    mechanism (see VRAM/timing section above), **not yet done for the Base
    checkpoint**.
-5. **Re-measure the router-representative (`no_mask_save`) VRAM condition at
-   n>1, ideally back-to-back without `/free` between runs (the way the
-   router would actually be hit)**, to determine whether the observed 212
-   MiB minimum margin (below this project's ~300 MiB safety floor) is
-   typical or an unlucky n=1 outlier - this blocks any router-integration
-   go/no-go decision per Codex's stated acceptance criteria.
+5. ~~Re-measure the router-representative (`no_mask_save`) VRAM condition
+   back-to-back without `/free`~~ - done (see Back-to-back chain subsection
+   above). Finding: back-to-back usage is NOT the risk (margin improves to
+   2100+ MiB); the cold-start-after-`/free` case is the tight point (n=2:
+   212, 367 MiB, straddling the ~300 MiB floor). **Still open: more
+   cold-start samples (n>2) to pin down whether the first-request margin is
+   reliably above or below the safety floor**, and/or a mitigation (not
+   loading SAM3 and the Klein UNet/CLIP simultaneously, reserve-vram-style
+   headroom) before this is safe to gate a router go/no-go decision on.
 6. n>1 repeat-seed pass on the A/B/B2 (reference-present) variants too,
    before calling either checkpoint's positive result reliable rather than
    feasible.

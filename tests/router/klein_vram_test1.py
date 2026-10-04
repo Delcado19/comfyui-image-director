@@ -78,9 +78,16 @@ def sample_vram(csv_path: Path, stop_event: threading.Event, gaps: list, loop_ms
                 proc.kill()
 
 
-def run_condition(label: str, include_mask_preview: bool, out_dir: Path):
+def run_condition(label: str, include_mask_preview: bool, out_dir: Path, do_free: bool = True, seed: int = SEED):
     assert_queue_empty()
-    free()  # clean cold floor before every condition - see module docstring
+    if do_free:
+        free()  # clean cold floor - see module docstring. do_free=False for
+        # back-to-back chain runs (added 2026-10-04): the router will never
+        # call /free between real user requests, and this project's own
+        # established discipline (build_router_graph.py's docstring,
+        # RESULTS_RVchain.md/RESULTS_RVref.md) is that VRAM must be proven
+        # safe under that back-to-back-without-/free sequencing, not just
+        # from a clean floor - a single /free'd run understates real risk.
 
     csv_path = out_dir / f"vram_log_kleinvram1_{label}.csv"
     hist_path = out_dir / f"history_kleinvram1_{label}.json"
@@ -92,7 +99,7 @@ def run_condition(label: str, include_mask_preview: bool, out_dir: Path):
     sampler.start()
     time.sleep(0.3)  # let the sampler get its first sample before the cold floor is disturbed by submit()
 
-    graph = build(SEED, PROMPT_B, REF_IMAGE_RED, profile="distilled", include_mask_preview=include_mask_preview)
+    graph = build(seed, PROMPT_B, REF_IMAGE_RED, profile="distilled", include_mask_preview=include_mask_preview)
     graph_path.write_text(json.dumps(graph, indent=2, ensure_ascii=False), encoding="utf-8")
 
     t0 = time.time()
@@ -113,7 +120,7 @@ def run_condition(label: str, include_mask_preview: bool, out_dir: Path):
 
     outs = result.get("outputs", {})
     summary = {
-        "label": label, "include_mask_preview": include_mask_preview, "prompt_id": pid, "seed": SEED,
+        "label": label, "include_mask_preview": include_mask_preview, "prompt_id": pid, "seed": seed,
         "wall_time_s": round(t1 - t0, 1),
         "status_completed": result.get("status", {}).get("completed"),
         "filenames": [i["filename"] for i in outs.get("save", {}).get("images", [])],
@@ -136,6 +143,28 @@ def run_condition(label: str, include_mask_preview: bool, out_dir: Path):
 if __name__ == "__main__":
     out_dir = Path("tests/router/runs")
     out_dir.mkdir(parents=True, exist_ok=True)
-    condition = sys.argv[1]  # "with_mask_save" or "no_mask_save"
-    include_mask_preview = condition == "with_mask_save"
-    run_condition(condition, include_mask_preview, out_dir)
+    condition = sys.argv[1]  # "with_mask_save" / "no_mask_save" / "chain_no_mask_save"
+    if condition == "chain_no_mask_save":
+        # Back-to-back-without-/free chain (added 2026-10-04, user-requested
+        # follow-up to the single-run no_mask_save result's 212 MiB margin):
+        # only the first run gets a clean /free floor, matching how the
+        # router would actually be hit by consecutive real requests.
+        # Each run uses a DIFFERENT seed - a same-seed/same-graph repeat was
+        # tried first and ComfyUI's own node-level caching turned runs 2+3
+        # into near-instant cache hits (0.5s, all 18 nodes incl. the KSampler
+        # itself reported cached - see history_kleinvram1_chain_no_mask_save_2
+        # .json's execution_cached message), which measured nothing real
+        # about back-to-back VRAM behavior. Varying the seed forces genuine
+        # re-execution of sample/decode/save each time while still never
+        # calling /free between runs.
+        n = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+        summaries = []
+        for i in range(1, n + 1):
+            summaries.append(run_condition(f"chain_no_mask_save_{i}", False, out_dir, do_free=(i == 1), seed=SEED + i))
+        print(json.dumps({"chain_summary": [
+            {"run": s["label"], "vram_free_min_mib": s["vram_free_min_mib"], "vram_used_max_mib": s["vram_used_max_mib"]}
+            for s in summaries
+        ]}, indent=2))
+    else:
+        include_mask_preview = condition == "with_mask_save"
+        run_condition(condition, include_mask_preview, out_dir)
