@@ -24,6 +24,15 @@ GPU:            NVIDIA GeForce RTX 5080
 VRAM:           16303 MiB (~16 GB)
 ```
 
+**Stale as of 2026-10-03 (caught during a documentation audit, 2026-10-04):**
+the project was inactive 2026-08-10 through ~2026-10-03, during which ComfyUI
+was upgraded past this commit. Current state per `G:\ComfyUI-Easy-Install\
+comfyui_scan\` (scan timestamp 2026-10-03 18:45:42, cross-checked live via
+`/system_stats`): **commit `6b747c04`, v0.38.0**. Python version and GPU/VRAM
+are unchanged. See `PROJECT_RULES.md`'s "Environment drift after a ~2-month
+pause" entry (2026-10-03) for the full model-path/custom-node delta this
+version jump caused - do not treat this section's commit/version as current.
+
 The handover's `a8c44f9b` is stale — one ComfyUI update happened between the
 2026-07-30 scan and now. Re-verified live via `git log -1` and `nvidia-smi`,
 matches the fresh scan exactly.
@@ -100,6 +109,21 @@ vae\pig_flux_vae_fp32-f16.gguf
 diffusion_models\Flux.2 Dev\flux2-dev-nvfp4-mixed.safetensors   (21.2 GB)
 text_encoders\Flux.2 Dev\mistral_3_small_flux2_fp4_mixed.safetensors  (11.4 GB)
 ```
+
+**Stale as of 2026-10-03 (caught during a documentation audit, 2026-10-04):**
+neither of these two files exists anymore. The current scan
+(`G:\ComfyUI-Easy-Install\comfyui_scan\`, 2026-10-03) shows Flux.2 Dev's UNet
+replaced by **`unet\Flux.2 Dev\flux2_dev-Q4_K_M.gguf`** (GGUF, 17.9 GB, a
+different quantization format entirely) and its text encoder replaced by
+**`text_encoders\Flux.2 Dev\mistral_3_small_flux2_nvfp4_mixed.safetensors`**
+(10.0 GB, also a different file - note the name is close but not identical:
+`nvfp4` here vs. this section's `fp4`). Any capability conclusion drawn
+against the old NVFP4 checkpoint below does **not** automatically transfer to
+today's GGUF checkpoint - this exact confusion was independently caught again
+during the 2026-10-04 Flux.2 Dev masking work; see
+`tests/router/RESULTS_flux2dev_masking_test1.md`'s "GGUF note" and
+`tests/router/RESULTS_flux2dev_capability.md` for what was actually validated
+against which checkpoint.
 
 **This is the most important delta.** A full FLUX.2 Dev branch (unet + its own
 Mistral-3-small text encoder) now exists and is not mentioned anywhere in the
