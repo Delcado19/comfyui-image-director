@@ -391,6 +391,39 @@ other GPU activity) if accurate timing estimates become important.
 Same launch-flags caveat as above applies: not confirmed which ComfyUI
 flag set was active for this specific run.
 
+## Distilled checkpoint: n=3 repeat-seed reliability (A/B/B2)
+
+User-requested follow-up: the original A/B/B2 positive results (color
+transfer, with and without naming the color in text) were each n=1 (seed
+424242). Two more seeds (777777, 111111 - the same seeds used throughout
+the Base-checkpoint D-variant testing, for consistency) were run for all
+three variants on the distilled checkpoint:
+
+| Seed | A (color named, red ref) | B (no color named, red ref) | B2 (no color named, green ref) |
+|---|---|---|---|
+| 424242 (original) | Red | Red | Green |
+| 777777 | Red | Red | Green |
+| 111111 | Red | Red | Green |
+
+**6/6 new runs matched the expected result exactly - 0 failures at n=3 per
+variant.** Unlike the Base checkpoint's D-variant (which showed a real,
+non-trivial 1-in-4 color-drift rate in the no-reference case), the
+reference-present variants on the distilled checkpoint show no seed-
+dependent failure in this sample. This is still a small sample (n=3 is not
+a strong reliability guarantee - the Base checkpoint's own drift only
+showed up at 1-in-4 seeds, so a failure rate below ~25-33% could plausibly
+not appear in 3 draws), but it is a meaningfully stronger result than the
+original n=1 claim and found no counter-example.
+
+**Base checkpoint's own A/B/B2 variants remain at n=1** (the original
+seed-424242 run only) - not yet repeated. Given the D-variant drift was
+Base-specific, Base's reference-present variants are a higher-priority
+target for the same n>1 treatment than further distilled-checkpoint testing
+would be, but each Base run costs ~3.5-25 minutes (timing has varied
+significantly today, see the timing-anomaly notes above) vs. the
+distilled checkpoint's ~20s, a substantial cost difference for 6 runs
+(A/B/B2 x 2 new seeds).
+
 ## Next steps (not yet done)
 
 1. ~~Quantify the Base checkpoint's no-reference color-drift rate~~ - done
@@ -413,8 +446,11 @@ flag set was active for this specific run.
    occasional-cold-start-OOM risk) before a router go/no-go decision,
    since this data does not support treating the cold-start margin as safe
    by default.
-6. n>1 repeat-seed pass on the A/B/B2 (reference-present) variants too,
-   before calling either checkpoint's positive result reliable rather than
-   feasible.
+6. ~~n>1 repeat-seed pass on the A/B/B2 (reference-present) variants~~ -
+   done for the **distilled** checkpoint (n=3, 0 failures, see above).
+   **Still open for the Base checkpoint** (A/B/B2 remain n=1) - higher
+   priority than more distilled testing since the Base checkpoint is the
+   one that showed a real seed-dependent failure mode (the D-variant
+   drift); each Base run costs ~3.5-25 min vs. distilled's ~20s.
 7. Flux.2 Dev + masking, as its own separate test (needs the source-latent
    graph fix Codex identified).
