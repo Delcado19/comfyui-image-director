@@ -191,10 +191,11 @@ def build_baseline() -> dict:
     }}
 
 
-def run_variant(name: str, seed: int, prompt_text: str, ref_image: str | None, sample_vram_flag: bool = False):
+def run_variant(name: str, seed: int, prompt_text: str, ref_image: str | None, sample_vram_flag: bool = False,
+                 include_mask_preview: bool = True):
     assert_queue_empty()
     free()
-    graph = build(seed, prompt_text, ref_image)
+    graph = build(seed, prompt_text, ref_image, include_mask_preview=include_mask_preview)
     with open(f"tests/router/runs/flux2dev_masktest1_variant{name}.graph.json", "w", encoding="utf-8") as f:
         json.dump(graph, f, indent=2, ensure_ascii=False)
 
@@ -275,4 +276,12 @@ if __name__ == "__main__":
         }
         prompt_text, ref_image = variants[variant]
         sample_vram_flag = "--vram" in sys.argv
-        run_variant(variant, seed, prompt_text, ref_image, sample_vram_flag=sample_vram_flag)
+        # --no-mask-preview: router-representative topology (Codex, round 2 of
+        # the router-integration consultation) - mask_save/mask_preview are an
+        # extra OUTPUT_NODE=True execution root the router's wiring will NOT
+        # include (same lesson already learned for Klein's integration, see
+        # RESULTS_router_klein_integration.md), so the 2049 MiB VRAM figure
+        # measured with them present is not router-representative.
+        include_mask_preview = "--no-mask-preview" not in sys.argv
+        run_variant(variant, seed, prompt_text, ref_image, sample_vram_flag=sample_vram_flag,
+                    include_mask_preview=include_mask_preview)

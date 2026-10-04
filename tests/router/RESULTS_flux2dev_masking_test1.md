@@ -197,7 +197,25 @@ transfer to this graph" was still unaddressed).
 - **VRAM**: 2049 MiB minimum free / 13,929 MiB max used during the run -
   comfortably above this project's ~300 MiB safety floor, with real margin
   to spare. First actual number for this graph shape (previously
-  unmeasured, flagged as a risk in the original verdict).
+  unmeasured, flagged as a risk in the original verdict). **Caveat found
+  during the router-integration consultation (Codex)**: this run still had
+  `include_mask_preview=True` (the script's default) - `mask_save`/
+  `mask_preview` are an extra `OUTPUT_NODE=True` execution root the router
+  would NOT include (same lesson already learned for Klein's integration,
+  see `RESULTS_router_klein_integration.md`), so this number was not
+  router-representative. Re-measured below.
+
+### Router-representative re-measurement (seed 777777, `--no-mask-preview`)
+
+Same run (M, seed 777777), topology matching what the router would
+actually build (no `mask_save`/`mask_preview`): **840.4s wall time, 1645
+MiB free minimum / 14,333 MiB used maximum.** Image output identical to
+the prior run at this seed (same seed/prompt/reference - confirms removing
+the mask-preview nodes only changes the measured topology, not the
+sampling result). Timing is consistent with the earlier 828.1s figure
+(mask-preview/save cost is negligible either way). VRAM margin is tighter
+without the extra nodes (1645 vs. 2049 MiB) but still ~5.5x above the
+project's 300 MiB safety floor - comfortable, not marginal.
 
 ## Numeric locality check (pixel diff vs. VAE baseline)
 
@@ -306,12 +324,15 @@ and the measurement method itself.
   the entire UNET off the GPU (see the M variant's operational issue,
   above) - now fixed in the script, but worth remembering if this graph is
   ever extended to accept arbitrary user-supplied references.
-- VRAM/duration is now measured once (828.1s, 2049 MiB free minimum,
-  M/seed 777777) - a real number where there was none, but still n=1 for
-  VRAM/timing specifically; GGUF dequantization overhead and partial
-  CPU/GPU offload (6.2 GB loaded, 12.8 GB offloaded) appear to be a
-  recurring cost on this checkpoint, not a one-off - not yet characterized
-  across more seeds or variants.
+- VRAM/duration is now measured twice at the same seed (with and without
+  `mask_save`/`mask_preview`): 840.4s / 1645 MiB free minimum in the
+  router-representative topology - real numbers where there was none, but
+  still n=1 across seeds/variants for VRAM/timing specifically; GGUF
+  dequantization overhead and partial CPU/GPU offload (6.2 GB loaded, 12.8
+  GB offloaded) appear to be a recurring cost on this checkpoint, not a
+  one-off - not yet characterized across more seeds or variants, or under
+  back-to-back router traffic (every measurement so far started from a
+  clean `/free` baseline).
 - No router integration proposed or implemented - this is a standalone
   feasibility result only, same posture Klein's test1 had before its own
   separate integration decision.

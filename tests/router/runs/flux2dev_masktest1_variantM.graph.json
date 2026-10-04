@@ -193,25 +193,6 @@
         "filename_prefix": "ImageDirector_Flux2DevMaskTest1"
       }
     },
-    "mask_preview": {
-      "class_type": "MaskToImage",
-      "inputs": {
-        "mask": [
-          "sam3_seg",
-          0
-        ]
-      }
-    },
-    "mask_save": {
-      "class_type": "SaveImage",
-      "inputs": {
-        "images": [
-          "mask_preview",
-          0
-        ],
-        "filename_prefix": "ImageDirector_Flux2DevMaskTest1_mask"
-      }
-    },
     "ref": {
       "class_type": "LoadImage",
       "inputs": {
