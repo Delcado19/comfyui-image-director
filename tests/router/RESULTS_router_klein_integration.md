@@ -152,15 +152,19 @@ selection, no regression on existing Qwen modes.
 
 ## Remaining risks
 
-- n=1 for both the VRAM-gated mitigation and this end-to-end router test -
-  a repeat-seed pass (same discipline already applied to the standalone
-  Klein tests) would still be worth doing before calling this reliable
-  rather than feasible, especially given the standalone test's own n=4
-  D-variant sweep found a real (if non-dominant) seed-dependent failure
-  mode on the Base checkpoint; the distilled checkpoint's positive variants
-  showed 0 failures at n=3, but that is not proof of 0% at larger n.
-  Base checkpoint is explicitly out of scope for this integration (Codex,
-  round 2) - not available as an `editor` choice.
+- ~~n=1 for both the VRAM-gated mitigation and this end-to-end router
+  test~~ - extended to n=3 (2026-10-04, seeds 424242/777777/111111).
+  VRAM-gated mitigation: 2333/2420/2412 MiB free, a tight range with no
+  outliers - the mitigation is not seed-sensitive. Router edit-case test:
+  3/3 correct red-dress transfers, `status_completed=true`,
+  `klein_executed=true`, zero `[ERROR]` log lines at every seed. Still not
+  proof of 0% failure at larger n (the standalone test's own n=4 D-variant
+  sweep found a real, if non-dominant, seed-dependent failure mode on the
+  Base checkpoint, so a 1-in-N failure rate at n>3 cannot be ruled out from
+  this sample alone), but the two most load-bearing n=1 caveats from the
+  original integration are closed. Base checkpoint remains explicitly out
+  of scope for this integration (Codex, round 2) - not available as an
+  `editor` choice.
 - Back-to-back-without-`/free` VRAM behavior was proven safe for the
   *standalone* distilled masked_reference graph
   (`RESULTS_klein_test1_masked_reference.md`'s back-to-back chain test,

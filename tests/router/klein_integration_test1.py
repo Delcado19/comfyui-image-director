@@ -40,12 +40,12 @@ def new_log_lines(start):
         return f.readlines()[start:]
 
 
-def run_case(label: str, instruction: str, edit_mode: str, expect_klein_executed: bool):
+def run_case(label: str, instruction: str, edit_mode: str, expect_klein_executed: bool, seed: int = SEED):
     assert_queue_empty()
     free()
 
     graph = build(
-        instruction, SEED, SEED, refs=[REF_IMAGE_RED],
+        instruction, seed, seed, refs=[REF_IMAGE_RED],
         edit_mode=edit_mode, mask_target="the woman's dress",
         source_image=SOURCE_IMAGE, editor="klein_distilled",
     )["prompt"]
@@ -104,16 +104,18 @@ def run_case(label: str, instruction: str, edit_mode: str, expect_klein_executed
 
 if __name__ == "__main__":
     case = sys.argv[1]  # "edit" or "generate"
+    seed = int(sys.argv[2]) if len(sys.argv) > 2 else SEED
+    label_suffix = "" if seed == SEED else f"_{seed}"
     if case == "edit":
         run_case(
-            "edit_klein_masked", instruction="Change the color of the dress in this photo.",
-            edit_mode="masked_reference", expect_klein_executed=True,
+            f"edit_klein_masked{label_suffix}", instruction="Change the color of the dress in this photo.",
+            edit_mode="masked_reference", expect_klein_executed=True, seed=seed,
         )
     elif case == "generate":
         run_case(
-            "generate_with_klein_wiring",
+            f"generate_with_klein_wiring{label_suffix}",
             instruction="Generate a picture of a quiet mountain lake at sunrise, no people.",
-            edit_mode="masked_reference", expect_klein_executed=False,
+            edit_mode="masked_reference", expect_klein_executed=False, seed=seed,
         )
     else:
         raise SystemExit(f"unknown case: {case!r}, expected 'edit' or 'generate'")

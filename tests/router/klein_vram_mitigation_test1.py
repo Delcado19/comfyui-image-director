@@ -141,12 +141,12 @@ def inject_pixaroma_free_vram(graph: dict, positive_node_ref: list) -> dict:
     return graph
 
 
-def run(label: str, mitigation: str, out_dir: Path, profile: str = "base"):
+def run(label: str, mitigation: str, out_dir: Path, profile: str = "base", seed: int = SEED):
     # mitigation: "none" / "vram_debug" / "pixaroma" / "vram_debug_full"
     assert_queue_empty()
     free()
 
-    graph_dict = build(SEED, PROMPT_B, REF_IMAGE_RED, profile=profile, include_mask_preview=False)
+    graph_dict = build(seed, PROMPT_B, REF_IMAGE_RED, profile=profile, include_mask_preview=False)
     graph = graph_dict["prompt"]
     sampler_key = "guider" if profile == "base" else "sample"
 
@@ -189,7 +189,7 @@ def run(label: str, mitigation: str, out_dir: Path, profile: str = "base"):
 
     outs = result.get("outputs", {})
     summary = {
-        "label": label, "mitigation": mitigation, "prompt_id": pid, "seed": SEED,
+        "label": label, "mitigation": mitigation, "prompt_id": pid, "seed": seed,
         "wall_time_s": round(t1 - t0, 1),
         "status_completed": result.get("status", {}).get("completed"),
         "filenames": [i["filename"] for i in outs.get("save", {}).get("images", [])],
@@ -215,4 +215,6 @@ if __name__ == "__main__":
         "distilled_gated": ("vram_debug_full", "distilled"),
     }[label]
     mitigation, profile = config
-    run(label, mitigation=mitigation, out_dir=out_dir, profile=profile)
+    seed = int(sys.argv[2]) if len(sys.argv) > 2 else SEED
+    run_label = label if seed == SEED else f"{label}_{seed}"
+    run(run_label, mitigation=mitigation, out_dir=out_dir, profile=profile, seed=seed)

@@ -504,7 +504,12 @@ type mismatch, not just a sequencing issue):
 | Run (distilled checkpoint) | Free VRAM | Peak VRAM |
 |---|---|---|
 | Baseline (no mitigation) | 369 MiB | 15609 MiB |
-| Mitigated (`VRAM_Debug`, fully gated, `unload_all_models=True`) | **2333 MiB** | **13645 MiB** |
+| Mitigated, seed 424242 | 2333 MiB | 13645 MiB |
+| Mitigated, seed 777777 | 2420 MiB | 13558 MiB |
+| Mitigated, seed 111111 | 2412 MiB | 13566 MiB |
+
+**n=3 for the mitigated condition (added 2026-10-04): 2333/2420/2412 MiB -
+tight range, no outliers.** The mitigation is not seed-sensitive.
 
 **Log-correlation evidence (Codex explicitly asked for this, not just an
 assumed-safe position):** `user/comfyui.log` for this exact run shows CLIP
@@ -518,12 +523,11 @@ genuinely GPU-resident and used by both encodings before the gate fired,
 exactly as designed, not just assumed from the graph position.
 
 **Verdict: this is the proven, router-safe mitigation.** Over 6x the
-baseline margin (369 -> 2333 MiB), comfortably clear of the ~300 MiB floor,
+baseline margin, comfortably clear of the ~300 MiB floor at all 3 seeds,
 using a node without the lazy-switch conflict that ruled out
-`PixaromaFreeVram`. Output image still correct (red dress). n=1 for this
-specific gated run - a repeat would still be worth doing before calling the
-margin question fully closed, but this clears Codex's stated acceptance bar
-for proceeding with the first router-integration attempt.
+`PixaromaFreeVram`. Output image correct (red dress) at all 3 seeds. This
+clears Codex's stated acceptance bar for the router-integration attempt and
+the n=1 caveat on the mitigation itself.
 
 ## Next steps (not yet done)
 
