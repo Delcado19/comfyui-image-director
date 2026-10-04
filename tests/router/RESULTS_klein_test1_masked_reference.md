@@ -424,6 +424,72 @@ significantly today, see the timing-anomaly notes above) vs. the
 distilled checkpoint's ~20s, a substantial cost difference for 6 runs
 (A/B/B2 x 2 new seeds).
 
+## VRAM margin mitigation attempt: `VRAM_Debug` node (negative result)
+
+**Root cause first, not guessed:** correlated
+`vram_log_kleinvram1_base_no_mask_save.csv` against ComfyUI's own
+`user/comfyui.log` for that exact `prompt_id` (timestamps matched and
+converted to epoch). Finding: **SAM3 is not the bottleneck.** It loads
+(~2.4->7.5 GB), segments the dress, and is fully unloaded (7.5 GB -> 2.4 GB,
+a clean drop) *before* the CLIP text encoder (Qwen3-8B, 8998 MB staged)
+even starts loading - there is no overlap between SAM3 and the main
+generation models. The real squeeze is the CLIP->UNET handoff: CLIP ramps
+to ~10.7 GB, then a partial drop to ~5.2 GB happens right as the UNET load
+request fires (consistent with ComfyUI's dynamic memory manager evicting
+CLIP on demand, but with a brief window where both are partially resident),
+before the UNET's own ramp takes the peak to 15.3-15.5 GB. This reframed
+the mitigation target from "unload SAM3 earlier" (already happens) to
+"smooth the CLIP->UNET handoff."
+
+**Mitigation tested:** a `VRAM_Debug` node (`comfyui-kjnodes`, already
+installed and used in the user's own Z-Image Base workflows) inserted
+between the completed positive-conditioning chain and the sampler, with
+`empty_cache=True, gc_collect=True, unload_all_models=False`. Forced into
+the dependency chain via the same pattern this project used for the E2/E3
+negative-prompt ordering fix (`StringSubstring` in `build_router_graph.py`):
+`VRAM_Debug`'s `any_input`/`any_output` (type `*`) pass the positive
+conditioning through unchanged while running the cache-clear as a side
+effect, so the sampler (and thus UNET) cannot proceed until the clear has
+happened. `unload_all_models` deliberately left `False` - `True` would risk
+unloading UNET too if it had already started loading concurrently,
+forcing a wasteful reload. New script: `klein_vram_mitigation_test1.py`
+(does graph surgery on `klein_test1_masked_reference.build()`'s output
+rather than modifying that validated script).
+
+| Run | Free VRAM | Peak VRAM |
+|---|---|---|
+| Baseline (no mitigation) | 445 MiB | 15533 MiB |
+| Mitigated (`VRAM_Debug`) | 459 MiB | 15519 MiB |
+
+**Verdict: no meaningful effect (+14 MiB, within noise - compare to the
+212-967 MiB spread already seen across unmitigated runs at the same
+conditions).** The output image was still correct (red dress, matching
+variant B's expected result), so the graph surgery didn't break anything,
+but `empty_cache`+`gc_collect` alone does not recover the margin. This
+weakens the "PyTorch caching-allocator fragmentation" hypothesis - if that
+were the main cause, an explicit `empty_cache()` call at the right point
+should have recovered at least some of it. The CLIP/UNET overlap is more
+likely structural (ComfyUI's dynamic loader needing both partially resident
+during the handoff) than a simple stale-cache issue, or `unload_all_models`
+(not tested, deliberately avoided for safety) would be needed to force the
+issue rather than just hint at it.
+
+**Follow-up candidate, not yet tested:** `PixaromaFreeVram` ("Free VRAM
+Pixaroma", `ComfyUI-Pixaroma`) - its own description describes this exact
+scenario ("a workflow with two heavy stages... the first model is still
+sitting in memory when the second one is asked for... put this node on the
+wire between the two and the first model is let go before the second is
+loaded") and offers an "All" mode that explicitly hands memory back to the
+card, which `VRAM_Debug`'s conservative `unload_all_models=False` setting
+does not attempt. Caveat: `PixaromaFreeVram` is `output_node: true`, the
+same property that made `mask_save` an extra execution root breaking the
+router's lazy generate/edit switch (see `build_router_graph.py`'s
+docstring) - using it inside the actual router (not just this standalone
+test) would need the same care. Its mode/threshold settings also appear to
+be configured via node-face UI widgets with a hidden JSON state field
+(`FreeVramState`) rather than plain typed inputs, which may complicate
+pure-API-JSON graph construction (not yet verified).
+
 ## Next steps (not yet done)
 
 1. ~~Quantify the Base checkpoint's no-reference color-drift rate~~ - done
