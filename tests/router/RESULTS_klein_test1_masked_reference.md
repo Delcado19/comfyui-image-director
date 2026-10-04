@@ -150,21 +150,34 @@ roughly 5% to 55% would not be surprising), but it is now large enough to
 say the drift is real and non-trivial, not a one-off fluke, while also
 confirming most seeds do preserve color correctly.
 
-**`PROMPT_D2` mitigation test (2026-10-04):** `PROMPT_D2` rewords the
-no-reference prompt to not reference a nonexistent "second reference image"
-("Keep the masked dress unchanged. Do not alter its color or material.").
-Run on the Base checkpoint at seed 424242 - the exact seed that drifted to
-teal under the original `PROMPT_B`-reused wording -
-`ImageDirector_KleinTest1_base_00008_.png`. **Result: the dress stayed blue.
-The reworded prompt fixed the known-failure case at this seed.** This is
-n=1 (one seed, the specific one already known to fail) - it shows the
-dangling "second reference image" phrase is at least *a* contributing factor
-worth removing, but does not by itself prove the reworded prompt eliminates
-the drift rate at other seeds (D2 has not been run on the 3 seeds that
-already stayed clean under the original prompt). Testing D2 across the same
-4 seeds (424242/777777/111111/555555) used for the original D sweep would
-give a direct head-to-head comparison before treating this as a confirmed
-fix rather than one promising data point.
+**`PROMPT_D2` mitigation test (2026-10-04), full 4-seed head-to-head:**
+`PROMPT_D2` rewords the no-reference prompt to not reference a nonexistent
+"second reference image" ("Keep the masked dress unchanged. Do not alter
+its color or material."). Run on the Base checkpoint at all 4 seeds from
+the original D sweep, for a direct comparison:
+
+| Seed | Original D prompt | `PROMPT_D2` |
+|---|---|---|
+| 424242 | **Teal/petrol drift** | Stayed blue |
+| 777777 | Stayed blue | Stayed blue |
+| 111111 | Stayed blue | Stayed blue |
+| 555555 | Stayed blue | Stayed blue |
+
+Files: `ImageDirector_KleinTest1_base_00008_.png` (424242),
+`_00009_.png` (777777), `_00010_.png` (111111), `_00011_.png` (555555).
+
+**Verdict: `PROMPT_D2` is 4/4 clean (0% observed drift) vs. the original
+prompt's 1/4 (25%), with no new drift introduced at any of the 3 seeds that
+were already clean.** At this sample size this reads as a real improvement
+with no observed downside - removing the dangling "second reference image"
+reference appears to remove (or at least substantially reduce) the color-
+drift risk in the no-reference case. n=4 per prompt is still small enough
+that neither "0%" nor "25%" should be treated as a precise rate (a single
+additional unlucky seed could still shift the picture, especially for the
+original prompt's already-wide 5-55% plausible range noted above), but the
+direction and the lack of any D2 regression make `PROMPT_D2`'s wording the
+recommended default for the no-reference case going forward, pending a
+larger sample if this becomes production-relevant.
 
 **Timing anomaly, noted but not resolved:** this D2 run completed in ~195s
 (verified via ComfyUI's own `/history` execution_start/execution_success
@@ -298,7 +311,9 @@ unlikely to flip with more data given how large the gap is (367/212 MiB vs.
 1. ~~Quantify the Base checkpoint's no-reference color-drift rate~~ - done
    (n=4: 1/4 drift, see above). `PROMPT_D2` (reworded prompt) remains
    untested as a mitigation candidate.
-2. Test `PROMPT_D2` (the reworded no-reference prompt) - not yet tried.
+2. ~~Test `PROMPT_D2`~~ - done (4/4 clean vs. original's 1/4, see above).
+   Adopt `PROMPT_D2`'s wording as the default for any future no-reference
+   masked-edit use of this mechanism.
 3. ~~Raise `timeout_s` for the Base profile~~ - done (2400s).
 4. ~~Add VRAM sampling~~ - done for the distilled checkpoint's masked_reference
    mechanism (see VRAM/timing section above), **not yet done for the Base
