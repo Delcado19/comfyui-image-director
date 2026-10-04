@@ -204,6 +204,25 @@ before further Base-checkpoint runs.
 
 ## VRAM/timing test (distilled checkpoint, variant B) - with vs. without `mask_save`
 
+**Caveat discovered 2026-10-04, after all VRAM numbers below were already
+collected:** ComfyUI's launch flags were not confirmed constant across every
+test in this section. Checking the running process late in the session
+found it started without `--reserve-vram` but with `--use-ck-attention` - a
+different flag combination than the `Start ComfyUI.bat --reserve-vram 2.5`
+launcher used earlier the same session (see PROJECT_RULES.md's 2026-10-03
+entry on this launcher). This means ComfyUI was very likely restarted
+(by the user) at some point between tests, and it is not established which
+specific VRAM numbers below were measured under which flag set - in
+particular, `--use-ck-attention` changes the attention implementation and
+could plausibly affect peak VRAM and/or timing on its own, independent of
+the `mask_save`/back-to-back/cold-start variables this section is actually
+trying to isolate. Not re-measured under a single pinned flag set (would
+require restarting the shared, currently-in-use ComfyUI instance, not done
+without asking first). Treat the relative comparisons WITHIN a given
+sub-test (same script invocation sequence, run close together) as more
+trustworthy than comparisons across sub-tests run at different points in
+the session.
+
 Codex's recommended smallest test before any router integration decision
 (read-only Codex exec session, 2026-10-04): Codex flagged that this
 standalone script's `mask_preview`/`mask_save` pair is an extra
@@ -341,6 +360,37 @@ across cold_sweep_1/2/3 is itself large for nominally-identical repeated
 cold starts) - this could reflect other GPU processes' memory state at
 measurement time, not a property of this graph alone.
 
+### Base checkpoint VRAM/timing
+
+The distilled checkpoint's VRAM margin was measured in detail above; the
+Base checkpoint (16.91 GB UNET, 34-step `dpmpp_sde`) was still unmeasured.
+One cold `/free`'d run, router-representative (`no_mask_save`) shape, seed
+424242: peak VRAM 15341 MiB, **minimum free VRAM 637 MiB**, 2009 samples at
+the same ~110ms spacing as the distilled tests.
+
+637 MiB sits within the distilled checkpoint's n=5 cold-start range
+(212-967 MiB) - closer to the upper half, comfortably above the ~300 MiB
+floor - but this is n=1 for Base, far less data than distilled's n=5, so
+treat this as a single consistent-with-distilled data point, not an
+independent confirmation that Base's margin is reliably safer.
+
+**Timing, again surprisingly fast:** 219.6s (~3.7 min) wall time, not the
+17-27 minute range observed for every other Base-profile run earlier today.
+This is the second time today a Base-profile run completed in a few minutes
+instead of the expected range (the `PROMPT_D2`/seed-424242 run earlier was
+~195s) - both of these fast runs happened after a string of other recent
+executions, while the original slow runs (17-27 min) were the first Base
+executions after a longer idle gap. This is consistent with, but not proof
+of, a recurring warm-CUDA-state effect rather than a one-off: Base-profile
+runs may simply be much faster once the GPU/CUDA context has been "worked"
+recently, independent of which specific graph ran before. Not isolated or
+confirmed here - flagged as a pattern worth testing directly (e.g., a
+deliberately cold first-of-the-day Base run vs. one run immediately after
+other GPU activity) if accurate timing estimates become important.
+
+Same launch-flags caveat as above applies: not confirmed which ComfyUI
+flag set was active for this specific run.
+
 ## Next steps (not yet done)
 
 1. ~~Quantify the Base checkpoint's no-reference color-drift rate~~ - done
@@ -350,9 +400,8 @@ measurement time, not a property of this graph alone.
    Adopt `PROMPT_D2`'s wording as the default for any future no-reference
    masked-edit use of this mechanism.
 3. ~~Raise `timeout_s` for the Base profile~~ - done (2400s).
-4. ~~Add VRAM sampling~~ - done for the distilled checkpoint's masked_reference
-   mechanism (see VRAM/timing section above), **not yet done for the Base
-   checkpoint**.
+4. ~~Add VRAM sampling~~ - done for both checkpoints (see VRAM/timing
+   sections above). Base: n=1, 637 MiB free, within distilled's n=5 range.
 5. ~~Re-measure the router-representative (`no_mask_save`) VRAM condition
    back-to-back without `/free`, extend cold-start to n>2~~ - done. Finding:
    back-to-back usage is NOT the risk (margin improves to 2100+ MiB); the

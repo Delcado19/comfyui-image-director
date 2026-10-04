@@ -78,7 +78,7 @@ def sample_vram(csv_path: Path, stop_event: threading.Event, gaps: list, loop_ms
                 proc.kill()
 
 
-def run_condition(label: str, include_mask_preview: bool, out_dir: Path, do_free: bool = True, seed: int = SEED):
+def run_condition(label: str, include_mask_preview: bool, out_dir: Path, do_free: bool = True, seed: int = SEED, profile: str = "distilled"):
     assert_queue_empty()
     if do_free:
         free()  # clean cold floor - see module docstring. do_free=False for
@@ -99,12 +99,15 @@ def run_condition(label: str, include_mask_preview: bool, out_dir: Path, do_free
     sampler.start()
     time.sleep(0.3)  # let the sampler get its first sample before the cold floor is disturbed by submit()
 
-    graph = build(seed, PROMPT_B, REF_IMAGE_RED, profile="distilled", include_mask_preview=include_mask_preview)
+    graph = build(seed, PROMPT_B, REF_IMAGE_RED, profile=profile, include_mask_preview=include_mask_preview)
     graph_path.write_text(json.dumps(graph, indent=2, ensure_ascii=False), encoding="utf-8")
 
     t0 = time.time()
     pid = submit(graph)
-    result = poll_history(pid, timeout_s=300)
+    # Base profile (34 steps, dpmpp_sde) needs much more than distilled's
+    # ~20s - same 2400s margin used in klein_test1_masked_reference.py's
+    # own timeout_s (that file's comment documents a real run at ~1816s).
+    result = poll_history(pid, timeout_s=300 if profile == "distilled" else 2400)
     t1 = time.time()
 
     time.sleep(0.3)  # one more sample after completion before stopping, for a clean tail
@@ -184,6 +187,13 @@ if __name__ == "__main__":
             {"run": s["label"], "vram_free_min_mib": s["vram_free_min_mib"], "vram_used_max_mib": s["vram_used_max_mib"]}
             for s in summaries
         ]}, indent=2))
+    elif condition == "base_no_mask_save":
+        # Base checkpoint's own VRAM/timing measurement (added 2026-10-04,
+        # the distilled checkpoint was measured above but the Base profile
+        # - 16.91 GB UNET, 34-step dpmpp_sde - was still unmeasured).
+        # Router-representative shape only (no_mask_save) - with_mask_save
+        # was never going to be the integration target for Base anyway.
+        run_condition("base_no_mask_save", False, out_dir, do_free=True, seed=SEED, profile="base")
     else:
         include_mask_preview = condition == "with_mask_save"
         run_condition(condition, include_mask_preview, out_dir)
