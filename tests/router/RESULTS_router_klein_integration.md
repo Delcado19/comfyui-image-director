@@ -165,13 +165,26 @@ selection, no regression on existing Qwen modes.
   original integration are closed. Base checkpoint remains explicitly out
   of scope for this integration (Codex, round 2) - not available as an
   `editor` choice.
-- Back-to-back-without-`/free` VRAM behavior was proven safe for the
-  *standalone* distilled masked_reference graph
-  (`RESULTS_klein_test1_masked_reference.md`'s back-to-back chain test,
-  margin improves not degrades) but not yet re-verified for this exact
-  router-integrated graph shape (extra nodes: the string-gate pair,
-  `VRAM_Debug`, SAM3 on `src` instead of `edit_scale`) under repeated
-  real router traffic.
+- ~~Back-to-back-without-`/free` VRAM behavior... not yet re-verified for
+  this exact router-integrated graph shape~~ - done (2026-10-04). 3 real
+  router edit-case requests in a row, no `/free` between them, alternating
+  reference image (red/green/red) to force genuine re-execution rather than
+  degenerate full-graph caching: **margin held stable at 2264/2252/2243
+  MiB, no degradation across the chain**, `VRAMdebug` log lines (with
+  matching freed-memory figures) confirm the gate genuinely fired fresh on
+  all 3 runs, not a cached replay. All 3 output images correct (run 2's
+  dress genuinely green, confirming the reference-image alternation took
+  effect). **A test-methodology bug was found and fixed along the way**:
+  the first chain attempt reused identical source/reference/instruction
+  across all 3 runs (only varying the final sampler seed), which caused
+  the *entire* Klein/SAM3/`VRAM_Debug` chain to legitimately cache from run
+  1 (confirmed via `execution_cached`, `klein_vram_gate` included) -
+  correct ComfyUI behavior, but the test's own pass/fail check only looked
+  for fresh log lines and misread full caching as a lazy-switch failure,
+  raising a `RuntimeError` that was NOT a real router problem. Fixed by
+  also checking the history's `execution_cached` list (not just fresh log
+  lines) and by alternating the reference image so each run has genuinely
+  different conditioning to encode.
 - Image-scaling question (whether the Klein branch should eventually gain
   its own `FluxKontextImageScale`-equivalent for consistency or for
   resolution/cost reasons) deliberately deferred, per Codex's explicit
