@@ -132,6 +132,51 @@ the router specifically: its upstream Klein-encoding branch would execute
 even when the runtime analyzer picks "generate", unconditionally evicting
 whatever model the generate branch is using. `VRAM_Debug` has no such flag
 and was confirmed safe to use here.
+
+editor="flux2_dev" (added 2026-10-04, joint Claude-Codex decision, Codex
+exec consultation on tests/router/flux2dev_masking_test1.py /
+RESULTS_flux2dev_masking_test1.md): swaps the masked_reference branch's
+editor for Flux.2 Dev (GGUF Q4_K_M) + VAEEncode(source) +
+SetLatentNoiseMask + native ReferenceLatent conditioning - the mechanism
+validated in RESULTS_flux2dev_masking_test1.md to causally transfer both
+color (n=2 seeds) and material/texture structure (n=2 seeds) onto a masked
+region without naming it in text, with locality confirmed numerically
+(pixel-diff vs. a VAE baseline), not just visually.
+
+**Explicitly NOT a replacement or quality upgrade for Klein.** Per Codex's
+review: this is a manual, opt-in technical integration (a validated
+mechanism made callable through the router), separate from any claim that
+Dev produces BETTER results than Klein - no head-to-head comparison exists,
+and both masking tests used the same easy fixture, not the harder case-3
+content that originally motivated this entire investigation (the case
+where the user judged Klein "isn't capable enough" - see PROJECT_RULES.md).
+Qwen stays the default; Klein stays available and unaffected; this is a
+second, independent opt-in option, not a new default or a 3-way automatic
+choice - the router's existing architecture already requires the CALLER to
+set `editor` explicitly (the analyzer only ever decides generate-vs-edit,
+never which editor), so this does not introduce any new automatic-routing
+risk.
+
+**Known, visible-by-design cost**: ~828-840s (roughly 14 minutes) per
+masked edit, measured at n=1 for VRAM/timing specifically (two runs, same
+seed, with/without mask_save present - see RESULTS_flux2dev_masking_test1.md) -
+this is not a controlled benchmark and the exact multiple vs. Klein's
+~15-25s is not load-bearing, but the order of magnitude is real and must
+stay visible to anyone selecting this editor, not buried. Material
+*identity* (does the transferred structure read as the SPECIFIC reference
+material, e.g. "leather" rather than a generic sheen) was only
+unambiguous at 1 of 2 tested seeds - a softer result than Klein's color
+transfer, which was unambiguous at every seed tested. VRAM margin was
+re-measured in the router-representative topology (no mask_save/
+mask_preview): 1645 MiB free minimum, ~5.5x above this project's 300 MiB
+floor - comfortable, no mitigation gate needed (unlike Klein's marginal
+margin) - but this is one data point, not characterized across seeds,
+variants, or back-to-back router traffic (every measurement so far started
+from a clean /free baseline). Uses Dev's own validated settings
+unchanged (cfg=1.2, 28 steps, dpmpp_sde, Flux2Scheduler,
+SamplerCustomAdvanced/CFGGuider) - Klein's 4-step KSampler and VRAM_Debug
+gate are deliberately NOT ported here; Dev's measured margin does not need
+mitigation, and porting Klein's sampler settings was never tested for Dev.
 """
 import json
 import sys
@@ -154,6 +199,21 @@ KLEIN_VAE_PATH = r"Flux.2\flux2-vae.safetensors"
 # parameter entry. Matches klein_test1_masked_reference.py's validated
 # PROMPT_B wording, parameterized only on the mask target.
 KLEIN_MASKED_PROMPT_TEMPLATE = (
+    "Change only the masked {target} to match the second reference image. "
+    "Keep everything outside the mask unchanged."
+)
+
+# Flux.2 Dev masked_reference branch (editor="flux2_dev"). Paths and wiring
+# match tests/router/flux2dev_masking_test1.py exactly - that script is the
+# validated source of truth for this mechanism. Only installed Dev UNet is
+# this GGUF checkpoint; see RESULTS_flux2dev_masking_test1.md for the
+# GGUF-vs-historical-NVFP4 evidence gap this does NOT close.
+DEV_UNET_PATH = r"Flux.2 Dev\flux2_dev-Q4_K_M.gguf"
+DEV_CLIP_PATH = r"Flux.2 Dev\mistral_3_small_flux2_nvfp4_mixed.safetensors"
+DEV_VAE_PATH = r"Flux.2\flux2-vae.safetensors"
+# Same wording as KLEIN_MASKED_PROMPT_TEMPLATE (direct comparability,
+# proven in flux2dev_masking_test1.py's PROMPT_B) - no {description} slot.
+DEV_MASKED_PROMPT_TEMPLATE = (
     "Change only the masked {target} to match the second reference image. "
     "Keep everything outside the mask unchanged."
 )
@@ -191,9 +251,9 @@ def build(
     refs = refs or []
     assert 0 <= len(refs) <= 2, "router supports 0-2 reference images (image2, image3)"
     assert edit_mode in ("plain", "masked_reference"), f"edit_mode must be 'plain' or 'masked_reference', got: {edit_mode!r}"
-    assert editor in ("qwen", "klein_distilled"), f"editor must be 'qwen' or 'klein_distilled', got: {editor!r}"
-    if editor == "klein_distilled":
-        assert edit_mode == "masked_reference", "editor='klein_distilled' is only supported for edit_mode='masked_reference' - plain mode always stays on Qwen, see module docstring"
+    assert editor in ("qwen", "klein_distilled", "flux2_dev"), f"editor must be 'qwen', 'klein_distilled', or 'flux2_dev', got: {editor!r}"
+    if editor in ("klein_distilled", "flux2_dev"):
+        assert edit_mode == "masked_reference", f"editor={editor!r} is only supported for edit_mode='masked_reference' - plain mode always stays on Qwen, see module docstring"
     if edit_mode == "masked_reference":
         assert len(refs) == 1, "masked_reference mode supports exactly 1 reference image (the proven RESULTS_masking_test1/2 setup - 'Reference Image #2' is hardcoded singular in the prompt template)"
         assert mask_target and mask_target.strip(), "masked_reference mode requires an explicit mask_target (the SAM3 segmentation prompt, e.g. 'the woman's dress') - not derived from the analyzer's plan, see module docstring"
@@ -408,6 +468,74 @@ def build(
             },
         }
         graph["klein_noise_mask"] = {"class_type": "SetLatentNoiseMask", "inputs": {"samples": ["klein_src_latent", 0], "mask": ["sam3_seg", 0]}}
+
+    elif editor == "flux2_dev":
+        # EDIT branch (Flux.2 Dev GGUF Q4_K_M, masked_reference only) - see
+        # module docstring's 2026-10-04 editor="flux2_dev" entry for the
+        # full design rationale, evidence, and explicit non-default/
+        # experimental framing. Mirrors flux2dev_masking_test1.py's
+        # validated graph shape exactly - no VRAM mitigation gate (Dev's
+        # measured margin did not need one, unlike Klein's), no 4-step
+        # sampler (Dev's own validated cfg=1.2/28-step/dpmpp_sde settings
+        # kept unchanged, not ported from Klein).
+        graph.update({
+            "dev_unet": {"class_type": "UnetLoaderGGUF", "inputs": {"unet_name": DEV_UNET_PATH}},
+            "dev_clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": DEV_CLIP_PATH, "type": "flux2"}},
+            "dev_vae": {"class_type": "VAELoader", "inputs": {"vae_name": DEV_VAE_PATH}},
+
+            # Source scaled to 1 MP - matches ab_flux2dev.py's already-
+            # validated convention and flux2dev_masking_test1.py; drives
+            # both the sampled latent's resolution and Flux2Scheduler's
+            # width/height.
+            "dev_src_scale": {
+                "class_type": "ImageScaleToTotalPixels",
+                "inputs": {"image": ["src", 0], "upscale_method": "lanczos", "megapixels": 1, "resolution_steps": 16},
+            },
+            "dev_get_size": {"class_type": "GetImageSize", "inputs": {"image": ["dev_src_scale", 0]}},
+            "dev_src_latent": {"class_type": "VAEEncode", "inputs": {"pixels": ["dev_src_scale", 0], "vae": ["dev_vae", 0]}},
+            # Reference scaled to 0.25 MP - NOT optional. An unscaled
+            # high-resolution reference forced the entire UNET off the GPU
+            # during the standalone test (see RESULTS_flux2dev_masking_test1.md's
+            # "Operational issue found and fixed" note) - this is a proven
+            # failure mode, not a defensive guess.
+            "dev_ref_scale": {
+                "class_type": "ImageScaleToTotalPixels",
+                "inputs": {"image": ["ref2", 0], "upscale_method": "lanczos", "megapixels": 0.25, "resolution_steps": 16},
+            },
+            "dev_ref_latent": {"class_type": "VAEEncode", "inputs": {"pixels": ["dev_ref_scale", 0], "vae": ["dev_vae", 0]}},
+
+            "dev_pos_text": {
+                "class_type": "CLIPTextEncode",
+                "inputs": {"clip": ["dev_clip", 0], "text": DEV_MASKED_PROMPT_TEMPLATE.format(target=mask_target)},
+            },
+            "dev_pos_ref_src": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["dev_pos_text", 0], "latent": ["dev_src_latent", 0]}},
+            "dev_pos_ref_ref": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["dev_pos_ref_src", 0], "latent": ["dev_ref_latent", 0]}},
+
+            "dev_neg_base": {"class_type": "ConditioningZeroOut", "inputs": {"conditioning": ["dev_pos_text", 0]}},
+            "dev_neg_ref_src": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["dev_neg_base", 0], "latent": ["dev_src_latent", 0]}},
+
+            "dev_noise": {"class_type": "RandomNoise", "inputs": {"noise_seed": seed}},
+            "dev_scheduler": {"class_type": "Flux2Scheduler", "inputs": {"steps": 28, "width": ["dev_get_size", 0], "height": ["dev_get_size", 1]}},
+            "dev_sampler_select": {"class_type": "KSamplerSelect", "inputs": {"sampler_name": "dpmpp_sde"}},
+            "dev_guider": {"class_type": "CFGGuider", "inputs": {"model": ["dev_unet", 0], "positive": ["dev_pos_ref_ref", 0], "negative": ["dev_neg_ref_src", 0], "cfg": 1.2}},
+            "dev_sample": {
+                "class_type": "SamplerCustomAdvanced",
+                "inputs": {"noise": ["dev_noise", 0], "guider": ["dev_guider", 0], "sampler": ["dev_sampler_select", 0], "sigmas": ["dev_scheduler", 0], "latent_image": ["dev_noise_mask", 0]},
+            },
+            "edit_image": {"class_type": "VAEDecode", "inputs": {"samples": ["dev_sample", 0], "vae": ["dev_vae", 0]}},
+        })
+        # SAM3 on the SAME scaled source the latent uses (not the raw src -
+        # mask and latent must share spatial dimensions). No mask_preview/
+        # mask_save here, same lazy-switch reasoning as the other branches.
+        graph["sam3_load"] = {"class_type": "easy sam3ModelLoader", "inputs": {"model": "sam3.safetensors", "segmentor": "image", "device": "cuda", "precision": "fp16"}}
+        graph["sam3_seg"] = {
+            "class_type": "easy sam3ImageSegmentation",
+            "inputs": {
+                "sam3_model": ["sam3_load", 0], "images": ["dev_src_scale", 0], "prompt": mask_target,
+                "threshold": 0.3, "keep_model_loaded": False, "add_background": "none", "detection_limit": -1,
+            },
+        }
+        graph["dev_noise_mask"] = {"class_type": "SetLatentNoiseMask", "inputs": {"samples": ["dev_src_latent", 0], "mask": ["sam3_seg", 0]}}
 
     if editor == "qwen" and edit_mode == "masked_reference":
         # SAM3 mask -> SetLatentNoiseMask, mechanism proven in
