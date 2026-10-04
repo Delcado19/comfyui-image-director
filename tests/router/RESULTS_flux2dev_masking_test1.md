@@ -199,29 +199,69 @@ transfer to this graph" was still unaddressed).
   to spare. First actual number for this graph shape (previously
   unmeasured, flagged as a risk in the original verdict).
 
+## Numeric locality check (pixel diff vs. VAE baseline)
+
+Per Codex's validation note, locality had only been verified visually so
+far. Computed per-pixel max-channel absolute difference between each
+variant's output and the `baseline` image (pure VAEEncode -> VAEDecode, no
+sampling), restricted to OUTSIDE the SAM3 mask (the region that should be
+unaffected by the masked edit):
+
+| variant | mean diff | p99 diff | max diff | % px > 10 | % px > 25 |
+|---|---|---|---|---|---|
+| A | 3.41 | 9.0 | 117 | 0.69% | 0.15% |
+| B | 3.48 | 9.0 | 112 | 0.72% | 0.15% |
+| D | 0.35 | 1.0 | 21 | 0.00% | 0.00% |
+| B2 | 3.30 | 8.0 | 69 | 0.54% | 0.08% |
+| M | 3.08 | 9.0 | 120 | 0.72% | 0.16% |
+| B (seed 777777) | 3.87 | 10.0 | 109 | 0.99% | 0.17% |
+| D (seed 777777) | 1.09 | 3.0 | 25 | 0.04% | 0.00% |
+| B2 (seed 777777) | 3.97 | 11.0 | 88 | 1.03% | 0.13% |
+| M (seed 777777) | 3.30 | 11.0 | 136 | 1.17% | 0.20% |
+
+(0-255 scale per channel; the masked dress region covers ~5.3% of the
+frame in every variant, same mask target each time.)
+
+**D is a built-in sanity check for the metric itself**: with no reference
+and the dress staying effectively unchanged, outside-mask diff is near
+zero (mean 0.35-1.09) - confirming the measurement correctly reads "no
+change" as no change, not an artifact of the method. A/B/B2/M, where the
+masked region visibly changes, show a small but consistently higher
+outside-mask diff (mean ~3-4, well under 1.2% of pixels exceeding a diff
+of 10, under 0.2% exceeding 25) - consistent with minor VAE-decode
+edge-bleed at the mask boundary (a convolutional decoder's receptive field
+spans a few pixels across the mask edge), not a systemic locality failure.
+Max-diff outliers (up to 136) are isolated boundary pixels, not a
+widespread pattern - p99 stays single-to-low-double-digit in every case.
+
+**Conclusion**: locality holds numerically, not just by visual impression -
+closes the "pixel-level locality diff" item from the original Remaining
+risks list.
+
 ## Evidence rules self-check
 
-- **Live runtime results**: all 7 generations (baseline + A/B/D/B2 at two
-  seeds + M), this session, this installation, `status_completed=true`,
-  verified by fetching and viewing each output image via ComfyUI's `/view`
-  API - not inferred from log text alone.
-- **Visual test result** for color-follow, material/texture transfer, and
-  locality: performed (images viewed directly), not assumed from graph
-  construction.
+- **Live runtime results**: all 9 generations (baseline + A/B/D/B2/M, B/D/B2
+  at a second seed, M at a second seed), this session, this installation,
+  `status_completed=true`, verified by fetching and viewing each output
+  image via ComfyUI's `/view` API - not inferred from log text alone.
+- **Visual test result** for color-follow and material/texture transfer:
+  performed (images viewed directly), not assumed from graph construction.
+- **Numeric test result** for locality: computed (pixel-diff vs. VAE
+  baseline, see above), not just visual impression.
 - **Now established** (previously open): material/texture transfer (visible
   grain/wrinkle/specular structure, not a flat fill) at n=2 seeds, both
   agreeing on "structure transfers". VRAM/duration are now measured for
   this graph shape (one data point: 828.1s, 2049 MiB free minimum) -
-  previously entirely unmeasured.
+  previously entirely unmeasured. Locality is now a numeric result, not
+  just visual.
 - **Still not established**: whether the TRANSFERRED structure reliably
   reads as the SPECIFIC reference material - seed 777777's result shows
   real non-flat structure but a lighter, more metallic/satin tone than
   seed 424242's clearly leather-like result (see the cross-check section
   above) - this is a softer claim than B/B2's color results, which were
-  unambiguous at both seeds. VRAM/timing is now n=1 (one run only, seed
+  unambiguous at both seeds. VRAM/timing is still n=1 (one run only, seed
   777777), not yet characterized across more seeds or against a direct
-  color-variant comparison at the same seed. Pixel-level locality diff
-  against the VAE baseline (done visually, not numerically) remains open.
+  color-variant comparison at the same seed.
 - **GGUF-specific**: this result is evidence for the installed GGUF Q4_K_M
   checkpoint specifically, not Dev precision variants generally - consistent
   with Codex's framing ("a feasibility proof for this GGUF setup, not
@@ -248,7 +288,12 @@ than material *structure presence* - flagged honestly as a softer result
 than the color variants, not overclaimed. A first real VRAM/duration
 number now exists for this graph shape (828.1s, 2049 MiB free minimum,
 seed 777777) - comfortably above the project's safety floor, though only
-one data point.
+one data point. **Locality is now numerically confirmed**, not just
+visual: outside-mask pixel diff vs. the VAE baseline stays small (mean
+~3-4/255) and concentrated at the mask boundary for every variant that
+actually changes the masked region, while the no-reference ablation (D)
+reads as near-zero (mean 0.35-1.09) - validating both the locality claim
+and the measurement method itself.
 
 ## Remaining risks / open items
 
@@ -270,8 +315,6 @@ one data point.
 - No router integration proposed or implemented - this is a standalone
   feasibility result only, same posture Klein's test1 had before its own
   separate integration decision.
-- Locality verified visually, not via a pixel-diff metric against the VAE
-  baseline.
 - The ComfyUI server crashed once mid-sequence (seed 777777, between B and
   D) for a reason not isolated in this session - operationally handled
   (restarted, resubmitted), but worth watching for a pattern if it recurs.
