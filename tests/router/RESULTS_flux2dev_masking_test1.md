@@ -165,12 +165,39 @@ applied to every variant's reference image, not just M. Re-run loaded
 normally (6.2 GB on GPU, consistent with the earlier successful A/B/D/B2
 runs) and completed.
 
-**Result**: the masked dress shows visible leather grain texture, wrinkle
-shading, and specular highlights consistent with the reference photo - not
-a flat black fill. This is a materially stronger result than the B/B2
-color swatches: **texture/material structure transferred, not just a
-solid color**. Locality held (face, pose, background unchanged, same as
-all prior variants).
+**Result (seed 424242)**: the masked dress shows visible leather grain
+texture, wrinkle shading, and specular highlights consistent with the
+reference photo - not a flat black fill. This is a materially stronger
+result than the B/B2 color swatches: **texture/material structure
+transferred, not just a solid color**. Locality held (face, pose,
+background unchanged, same as all prior variants).
+
+### Second-seed cross-check + VRAM/timing (seed 777777, `--vram`)
+
+Combines two previously-open items in one run: a second seed for M, and
+the first real VRAM/duration measurement for this graph shape (none had
+been taken before - Codex's explicit caution that "old margins don't
+transfer to this graph" was still unaddressed).
+
+- **Material result**: non-flat structure transferred again (visible
+  wrinkle/sheen shading on the masked region, not a flat fill) - but the
+  tone reads lighter and more metallic/satin than seed 424242's result,
+  less unambiguously "leather" specifically. **2/2 seeds show non-flat
+  material structure transfer; only 1/2 unambiguously reads as the
+  specific reference material (leather).** Honest finding, not glossed
+  over: material *identity* may be more seed-sensitive than material
+  *presence of structure*, unlike the color variants (B/B2), which were
+  unambiguous at both seeds.
+- **Timing**: 828.1s wall time (~13.8 min) for this run - in the same
+  range as the slower seed-777777 color runs (12:39 for B), not the
+  faster seed-424242 runs. Partial GPU/CPU offload (6.2 GB loaded, 12.8 GB
+  offloaded - see the operational note under the second-seed color
+  cross-check, above) appears to be a recurring, not one-off, cost on this
+  GGUF checkpoint.
+- **VRAM**: 2049 MiB minimum free / 13,929 MiB max used during the run -
+  comfortably above this project's ~300 MiB safety floor, with real margin
+  to spare. First actual number for this graph shape (previously
+  unmeasured, flagged as a risk in the original verdict).
 
 ## Evidence rules self-check
 
@@ -181,17 +208,20 @@ all prior variants).
 - **Visual test result** for color-follow, material/texture transfer, and
   locality: performed (images viewed directly), not assumed from graph
   construction.
-- **Now established** (previously open): material/texture transfer - a
-  real photographic reference (not a flat color swatch) produced visible
-  grain/wrinkle/specular structure on the masked region, not just a flat
-  fill. Single run only (seed 424242, not cross-seed-checked the way
-  B/D/B2 were).
-- **Still not established**: n>1 for the material variant specifically
-  (only run once), VRAM/timing characterization (deliberately out of scope
-  for this feasibility pass per Codex - "old margins don't transfer" means
-  a real number is still needed before any further step; the M variant's
-  own VRAM near-miss, see above, makes this more urgent), pixel-level
-  locality diff against the VAE baseline (done visually, not numerically).
+- **Now established** (previously open): material/texture transfer (visible
+  grain/wrinkle/specular structure, not a flat fill) at n=2 seeds, both
+  agreeing on "structure transfers". VRAM/duration are now measured for
+  this graph shape (one data point: 828.1s, 2049 MiB free minimum) -
+  previously entirely unmeasured.
+- **Still not established**: whether the TRANSFERRED structure reliably
+  reads as the SPECIFIC reference material - seed 777777's result shows
+  real non-flat structure but a lighter, more metallic/satin tone than
+  seed 424242's clearly leather-like result (see the cross-check section
+  above) - this is a softer claim than B/B2's color results, which were
+  unambiguous at both seeds. VRAM/timing is now n=1 (one run only, seed
+  777777), not yet characterized across more seeds or against a direct
+  color-variant comparison at the same seed. Pixel-level locality diff
+  against the VAE baseline (done visually, not numerically) remains open.
 - **GGUF-specific**: this result is evidence for the installed GGUF Q4_K_M
   checkpoint specifically, not Dev precision variants generally - consistent
   with Codex's framing ("a feasibility proof for this GGUF setup, not
@@ -209,27 +239,34 @@ closed investigation's finding for the empty-latent mechanism - correctly
 so, since it is a different graph, not a re-run of the same one. The
 second-seed cross-check (777777) reproduces all three causal results
 (B/D/B2), raising confidence from a single sample to 2/2 agreement.
-**Material/texture transfer is also confirmed** (variant M): a real
-photographic leather reference produced visible grain/wrinkle/specular
-structure on the masked region, not just a flat color fill - this is the
-stronger claim `RESULTS_ref_weight.md` had left open since the original
-case-3 investigation closed.
+**Material/texture transfer is also confirmed at n=2** (variant M): both
+seeds show visible grain/wrinkle/specular structure on the masked region,
+not a flat color fill - the stronger claim `RESULTS_ref_weight.md` had
+left open since the original case-3 investigation closed. Material
+*identity* (does it specifically read as leather) is more seed-sensitive
+than material *structure presence* - flagged honestly as a softer result
+than the color variants, not overclaimed. A first real VRAM/duration
+number now exists for this graph shape (828.1s, 2049 MiB free minimum,
+seed 777777) - comfortably above the project's safety floor, though only
+one data point.
 
 ## Remaining risks / open items
 
-- n=2 for the color variants (two seeds, both agreeing) - stronger than
-  the original n=1, but still not a reliability estimate. Klein's own
-  history (Base-checkpoint D-variant, 1/4 drift) shows seed-dependent
-  failure modes can stay hidden at n=2 too. The material variant (M) is
-  still n=1, not yet cross-seed-checked.
+- n=2 for the color variants (two seeds, both agreeing) and n=2 for
+  material (two seeds, both showing structure transfer but only one
+  unambiguously "leather") - stronger than the original n=1, but still not
+  a reliability estimate. Klein's own history (Base-checkpoint D-variant,
+  1/4 drift) shows seed-dependent failure modes can stay hidden at n=2 too.
 - A real high-resolution reference needs explicit scaling or it can force
   the entire UNET off the GPU (see the M variant's operational issue,
   above) - now fixed in the script, but worth remembering if this graph is
   ever extended to accept arbitrary user-supplied references.
-- No VRAM/duration measurement - GGUF dequantization overhead and the
-  larger Dev model are unknowns here; Klein's router-integration VRAM
-  margins do not transfer to this graph shape. The seed-777777 run's
-  partial-offload slowdown (see above) makes this more pressing, not less.
+- VRAM/duration is now measured once (828.1s, 2049 MiB free minimum,
+  M/seed 777777) - a real number where there was none, but still n=1 for
+  VRAM/timing specifically; GGUF dequantization overhead and partial
+  CPU/GPU offload (6.2 GB loaded, 12.8 GB offloaded) appear to be a
+  recurring cost on this checkpoint, not a one-off - not yet characterized
+  across more seeds or variants.
 - No router integration proposed or implemented - this is a standalone
   feasibility result only, same posture Klein's test1 had before its own
   separate integration decision.

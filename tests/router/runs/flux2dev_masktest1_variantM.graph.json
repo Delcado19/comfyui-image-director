@@ -147,7 +147,7 @@
     "noise": {
       "class_type": "RandomNoise",
       "inputs": {
-        "noise_seed": 424242
+        "noise_seed": 777777
       }
     },
     "scheduler": {
