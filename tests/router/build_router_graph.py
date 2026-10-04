@@ -84,6 +84,54 @@ way the generate/edit switch itself was. Do not treat masked_reference as
 cleared for back-to-back production use without a dedicated, tighter-
 sampling VRAM-chain test (same category as the existing
 back-to-back-without-/free mandatory-rule tests for the plain edit branch).
+
+editor parameter (added 2026-10-04, joint Claude-Codex decision across two
+Codex exec rounds, read-only review of this file + the full
+tests/router/klein_test1_masked_reference.py / RESULTS_klein_test1_masked_reference.md
+causal-test and VRAM-mitigation history): "qwen" (default) or
+"klein_distilled", meaningful ONLY when edit_mode="masked_reference" - for
+edit_mode="plain" the editor is always Qwen, unaffected by this parameter.
+editor="klein_distilled" swaps the masked_reference branch's editor for
+FLUX.2 Klein 9B distilled + native two-way ReferenceLatent conditioning
+(the mechanism proven in RESULTS_klein_test1_masked_reference.md to
+transfer a reference image's color/material onto a masked region WITHOUT
+naming the color in text - a capability Qwen's masked_reference branch does
+not have, see that file's ablation). Codex's explicit scope for this first
+integration: additive only (qwen stays the default, fully unchanged
+wiring), build ONLY the selected editor's nodes (not both - loading both
+Qwen's and Klein's multi-GB model sets for one request would defeat the
+purpose), no FluxKontextImageScale preprocessing for the Klein branch
+(unscaled source, matching what was actually validated in the standalone
+test - scaling was never tested and is a separate question), and no
+reference_description requirement for Klein (its proven prompt template
+deliberately does not name the reference's color/material - Qwen's branch
+still requires reference_description, since that is what its own validated
+mechanism needs).
+
+VRAM mitigation (required for the Klein branch, not optional): the
+distilled checkpoint's masked_reference VRAM margin was measured at 212-967
+MiB free across n=5 cold /free'd samples (RESULTS_klein_test1_masked_reference.md),
+1-in-5 below this project's ~300 MiB floor - marginal, not reliably safe.
+Mitigated via a `VRAM_Debug` node (comfyui-kjnodes) with
+`unload_all_models=True`, forced to run only after BOTH the positive and
+negative text encodings complete (gating on positive alone was tried first
+and rejected by Codex's review - it does not guarantee negative encoding
+has finished, risking a CLIP reload right before UNET needs the space).
+The two-stage ordering fix (`SomethingToString` + `StringSubstring(start=0,
+end=0)` forcing the negative CLIPTextEncode to depend on the positive
+ReferenceLatent chain while still encoding the same empty string as
+before) is the same class of dependency-injection trick as this file's own
+edit_neg_str (E2/E3) fix above - proven via `klein_vram_mitigation_test1.py`
+and log-correlated against ComfyUI's own `user/comfyui.log` to confirm CLIP
+was genuinely GPU-resident at the gate point, not just assumed safe from
+graph position; result was 369 -> 2333 MiB free, n=1. `PixaromaFreeVram`
+("Free VRAM Pixaroma") was tried first and worked even better in isolation,
+but is OUTPUT_NODE=True - the same property that makes mask_save (below) an
+extra execution root - and was rejected by Codex's review as unsafe for
+the router specifically: its upstream Klein-encoding branch would execute
+even when the runtime analyzer picks "generate", unconditionally evicting
+whatever model the generate branch is using. `VRAM_Debug` has no such flag
+and was confirmed safe to use here.
 """
 import json
 import sys
@@ -93,6 +141,20 @@ MMPROJ_PATH = r"G:\ComfyUI-Easy-Install\ComfyUI\models\llm\GGUF\huihui-ai\Qwen2.
 
 MASKED_PROMPT_TEMPLATE = (
     "Change only the masked {target} to match the {description} of Reference Image #2. "
+    "Keep everything outside the mask unchanged."
+)
+
+# Klein 9B distilled masked_reference branch (editor="klein_distilled").
+# Paths match tests/router/klein_test1_masked_reference.py's PROFILES["distilled"]
+# exactly - that script is the validated source of truth for this mechanism.
+KLEIN_UNET_PATH = r"Flux.2 klein\9B\snofsSexNudesAndOtherFunStuff_distilledV12Fp8.safetensors"
+KLEIN_CLIP_PATH = r"Flux.2 klein 9b\qwen3-8b-heretic_fp8_e4m3fn.safetensors"
+KLEIN_VAE_PATH = r"Flux.2\flux2-vae.safetensors"
+# No {description} slot, deliberately - see module docstring's editor-
+# parameter entry. Matches klein_test1_masked_reference.py's validated
+# PROMPT_B wording, parameterized only on the mask target.
+KLEIN_MASKED_PROMPT_TEMPLATE = (
+    "Change only the masked {target} to match the second reference image. "
     "Keep everything outside the mask unchanged."
 )
 
@@ -116,7 +178,7 @@ def edit_plan_schema_for(reference_count: int):
 def build(
     instruction: str, seed: int, analyzer_seed: int, refs: list[str] | None = None,
     *, edit_mode: str = "plain", mask_target: str | None = None, reference_description: str | None = None,
-    source_image: str = "imgdir_jsontest_shapes.png",
+    source_image: str = "imgdir_jsontest_shapes.png", editor: str = "qwen",
 ) -> dict:
     # source_image parameter added 2026-10-03 (Codex post-implementation
     # review): the hardcoded default below no longer exists in ComfyUI's
@@ -129,10 +191,14 @@ def build(
     refs = refs or []
     assert 0 <= len(refs) <= 2, "router supports 0-2 reference images (image2, image3)"
     assert edit_mode in ("plain", "masked_reference"), f"edit_mode must be 'plain' or 'masked_reference', got: {edit_mode!r}"
+    assert editor in ("qwen", "klein_distilled"), f"editor must be 'qwen' or 'klein_distilled', got: {editor!r}"
+    if editor == "klein_distilled":
+        assert edit_mode == "masked_reference", "editor='klein_distilled' is only supported for edit_mode='masked_reference' - plain mode always stays on Qwen, see module docstring"
     if edit_mode == "masked_reference":
         assert len(refs) == 1, "masked_reference mode supports exactly 1 reference image (the proven RESULTS_masking_test1/2 setup - 'Reference Image #2' is hardcoded singular in the prompt template)"
         assert mask_target and mask_target.strip(), "masked_reference mode requires an explicit mask_target (the SAM3 segmentation prompt, e.g. 'the woman's dress') - not derived from the analyzer's plan, see module docstring"
-        assert reference_description and reference_description.strip(), "masked_reference mode requires an explicit reference_description (e.g. 'red color and material') - the one tested color-free wording failed to transfer the reference's color, see RESULTS_masking_test2_current_env.md's ablation"
+        if editor == "qwen":
+            assert reference_description and reference_description.strip(), "masked_reference mode requires an explicit reference_description (e.g. 'red color and material') - the one tested color-free wording failed to transfer the reference's color, see RESULTS_masking_test2_current_env.md's ablation. Klein (editor='klein_distilled') does not need this - see module docstring"
 
     prompt_text = GUIDANCE.format(instruction=instruction, reference_note=REFERENCE_NOTE_BY_COUNT[len(refs)])
     schema = edit_plan_schema_for(len(refs))
@@ -226,6 +292,16 @@ def build(
         },
         "gen_image": {"class_type": "VAEDecode", "inputs": {"samples": ["gen_sample", 0], "vae": ["gen_vae", 0]}},
 
+        # Merge - single switch, single output. "edit_image" is added below,
+        # by whichever editor branch is selected - referenced here by key
+        # name only (ComfyUI resolves node references by key at submission
+        # time, not at Python dict-construction time), so this works
+        # regardless of which branch below actually defines it.
+        "switch": {"class_type": "easy ifElse", "inputs": {"boolean": ["is_edit", 0], "on_true": ["edit_image", 0], "on_false": ["gen_image", 0]}},
+        "save": {"class_type": "SaveImage", "inputs": {"images": ["switch", 0], "filename_prefix": "ImageDirector_router"}},
+    })
+
+    if editor == "qwen":
         # EDIT branch (Qwen Image Edit 2511) - decodes to IMAGE, no output node.
         # Negative prompt deliberately depends on edit_prompt_str (the
         # analyzer's own output) rather than a bare "" literal - keeps the
@@ -233,42 +309,107 @@ def build(
         # the lazy-switch design should already force sequential ordering
         # (see module docstring) - defense in depth, cheap to keep.
         # fp8 safetensors, not GGUF - see module docstring's 2026-10-03 note.
-        "edit_unet": {"class_type": "UNETLoader", "inputs": {"unet_name": "Qwen Image Edit 2511\\qwen_image_edit_2511_fp8.safetensors", "weight_dtype": "default"}},
-        "edit_clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": "Qwen Image Edit 2511\\qwen2.5_vl_7b_huihui_abliterated_fp8.safetensors", "type": "qwen_image"}},
-        "edit_vae": {"class_type": "VAELoader", "inputs": {"vae_name": "Qwen Image Edit 2509\\qwen_image_vae.safetensors"}},
-        "edit_scale": {"class_type": "FluxKontextImageScale", "inputs": {"image": ["src", 0]}},
-        "edit_model": {"class_type": "CFGNorm", "inputs": {"model": ["edit_unet", 0], "strength": 1.0}},
-        "edit_model_s": {"class_type": "ModelSamplingAuraFlow", "inputs": {"model": ["edit_model", 0], "shift": 3}},
-        "edit_latent": {"class_type": "VAEEncode", "inputs": {"pixels": ["edit_scale", 0], "vae": ["edit_vae", 0]}},
-        "edit_cond_pos": {
-            "class_type": "TextEncodeQwenImageEditPlus",
-            "inputs": {"clip": ["edit_clip", 0], "vae": ["edit_vae", 0], "image1": ["edit_scale", 0], "prompt": ["edit_prompt_str", 0]},
-        },
-        "edit_neg_str": {"class_type": "StringSubstring", "inputs": {"string": ["edit_prompt_str", 0], "start": 0, "end": 0}},
-        "edit_cond_neg": {
-            "class_type": "TextEncodeQwenImageEditPlus",
-            "inputs": {"clip": ["edit_clip", 0], "vae": ["edit_vae", 0], "image1": ["edit_scale", 0], "prompt": ["edit_neg_str", 0]},
-        },
-        "edit_sample": {
-            "class_type": "KSampler",
-            "inputs": {
-                "model": ["edit_model_s", 0], "positive": ["edit_cond_pos", 0], "negative": ["edit_cond_neg", 0],
-                "latent_image": ["edit_latent", 0], "seed": seed, "steps": 8, "cfg": 2.5,
-                "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0,
+        graph.update({
+            "edit_unet": {"class_type": "UNETLoader", "inputs": {"unet_name": "Qwen Image Edit 2511\\qwen_image_edit_2511_fp8.safetensors", "weight_dtype": "default"}},
+            "edit_clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": "Qwen Image Edit 2511\\qwen2.5_vl_7b_huihui_abliterated_fp8.safetensors", "type": "qwen_image"}},
+            "edit_vae": {"class_type": "VAELoader", "inputs": {"vae_name": "Qwen Image Edit 2509\\qwen_image_vae.safetensors"}},
+            "edit_scale": {"class_type": "FluxKontextImageScale", "inputs": {"image": ["src", 0]}},
+            "edit_model": {"class_type": "CFGNorm", "inputs": {"model": ["edit_unet", 0], "strength": 1.0}},
+            "edit_model_s": {"class_type": "ModelSamplingAuraFlow", "inputs": {"model": ["edit_model", 0], "shift": 3}},
+            "edit_latent": {"class_type": "VAEEncode", "inputs": {"pixels": ["edit_scale", 0], "vae": ["edit_vae", 0]}},
+            "edit_cond_pos": {
+                "class_type": "TextEncodeQwenImageEditPlus",
+                "inputs": {"clip": ["edit_clip", 0], "vae": ["edit_vae", 0], "image1": ["edit_scale", 0], "prompt": ["edit_prompt_str", 0]},
             },
-        },
-        "edit_image": {"class_type": "VAEDecode", "inputs": {"samples": ["edit_sample", 0], "vae": ["edit_vae", 0]}},
+            "edit_neg_str": {"class_type": "StringSubstring", "inputs": {"string": ["edit_prompt_str", 0], "start": 0, "end": 0}},
+            "edit_cond_neg": {
+                "class_type": "TextEncodeQwenImageEditPlus",
+                "inputs": {"clip": ["edit_clip", 0], "vae": ["edit_vae", 0], "image1": ["edit_scale", 0], "prompt": ["edit_neg_str", 0]},
+            },
+            "edit_sample": {
+                "class_type": "KSampler",
+                "inputs": {
+                    "model": ["edit_model_s", 0], "positive": ["edit_cond_pos", 0], "negative": ["edit_cond_neg", 0],
+                    "latent_image": ["edit_latent", 0], "seed": seed, "steps": 8, "cfg": 2.5,
+                    "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0,
+                },
+            },
+            "edit_image": {"class_type": "VAEDecode", "inputs": {"samples": ["edit_sample", 0], "vae": ["edit_vae", 0]}},
+        })
 
-        # Merge - single switch, single output.
-        "switch": {"class_type": "easy ifElse", "inputs": {"boolean": ["is_edit", 0], "on_true": ["edit_image", 0], "on_false": ["gen_image", 0]}},
-        "save": {"class_type": "SaveImage", "inputs": {"images": ["switch", 0], "filename_prefix": "ImageDirector_router"}},
-    })
+        for i, _ in enumerate(refs, start=2):
+            graph["edit_cond_pos"]["inputs"][f"image{i}"] = [f"ref{i}", 0]
+            graph["edit_cond_neg"]["inputs"][f"image{i}"] = [f"ref{i}", 0]
 
-    for i, _ in enumerate(refs, start=2):
-        graph["edit_cond_pos"]["inputs"][f"image{i}"] = [f"ref{i}", 0]
-        graph["edit_cond_neg"]["inputs"][f"image{i}"] = [f"ref{i}", 0]
+    elif editor == "klein_distilled":
+        # EDIT branch (FLUX.2 Klein 9B distilled, masked_reference only) -
+        # see module docstring's 2026-10-04 editor-parameter entry for the
+        # full design rationale and VRAM-mitigation evidence. Mirrors
+        # klein_test1_masked_reference.py's validated graph shape, with the
+        # VRAM_Debug mitigation gate baked in (not optional - the unmitigated
+        # margin is marginal, see RESULTS_klein_test1_masked_reference.md).
+        graph.update({
+            "klein_unet": {"class_type": "UNETLoader", "inputs": {"unet_name": KLEIN_UNET_PATH, "weight_dtype": "default"}},
+            "klein_clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": KLEIN_CLIP_PATH, "type": "flux2", "device": "default"}},
+            "klein_vae": {"class_type": "VAELoader", "inputs": {"vae_name": KLEIN_VAE_PATH}},
+            # Unscaled source - no FluxKontextImageScale, per Codex's review
+            # (matches what klein_test1_masked_reference.py actually
+            # validated; scaling is a separate, untested question).
+            "klein_src_latent": {"class_type": "VAEEncode", "inputs": {"pixels": ["src", 0], "vae": ["klein_vae", 0]}},
+            "klein_ref_latent": {"class_type": "VAEEncode", "inputs": {"pixels": ["ref2", 0], "vae": ["klein_vae", 0]}},
 
-    if edit_mode == "masked_reference":
+            "klein_pos_text": {
+                "class_type": "CLIPTextEncode",
+                "inputs": {"clip": ["klein_clip", 0], "text": KLEIN_MASKED_PROMPT_TEMPLATE.format(target=mask_target)},
+            },
+            "klein_pos_ref_src": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["klein_pos_text", 0], "latent": ["klein_src_latent", 0]}},
+            "klein_pos_ref_ref": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["klein_pos_ref_src", 0], "latent": ["klein_ref_latent", 0]}},
+
+            # VRAM-mitigation ordering gate (type-safe dependency injection,
+            # same class of fix as edit_neg_str above): forces klein_neg_text
+            # to run after klein_pos_ref_ref while still encoding the same
+            # empty string "" it always used - proven in
+            # klein_vram_mitigation_test1.py, log-correlated to confirm CLIP
+            # was genuinely GPU-resident at the gate point.
+            "klein_pos_done_str": {"class_type": "SomethingToString", "inputs": {"input": ["klein_pos_ref_ref", 0]}},
+            "klein_neg_text_gated": {"class_type": "StringSubstring", "inputs": {"string": ["klein_pos_done_str", 0], "start": 0, "end": 0}},
+            "klein_neg_text": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["klein_clip", 0], "text": ["klein_neg_text_gated", 0]}},
+            "klein_neg_ref_src": {"class_type": "ReferenceLatent", "inputs": {"conditioning": ["klein_neg_text", 0], "latent": ["klein_src_latent", 0]}},
+            # The actual mitigation: full unload, gated on BOTH encodings
+            # being done (klein_neg_ref_src transitively depends on
+            # klein_pos_ref_ref via the string gate above).
+            "klein_vram_gate": {
+                "class_type": "VRAM_Debug",
+                "inputs": {
+                    "empty_cache": True, "gc_collect": True, "unload_all_models": True,
+                    "any_input": ["klein_neg_ref_src", 0],
+                },
+            },
+
+            "klein_sample": {
+                "class_type": "KSampler",
+                "inputs": {
+                    "model": ["klein_unet", 0], "positive": ["klein_pos_ref_ref", 0], "negative": ["klein_vram_gate", 0],
+                    "latent_image": ["klein_noise_mask", 0], "seed": seed, "steps": 4, "cfg": 1,
+                    "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0,
+                },
+            },
+            "edit_image": {"class_type": "VAEDecode", "inputs": {"samples": ["klein_sample", 0], "vae": ["klein_vae", 0]}},
+        })
+        # SAM3 mask on the unscaled source (not edit_scale - that node does
+        # not exist in this branch). No mask_preview/mask_save here, same
+        # lazy-switch reasoning as the Qwen branch below.
+        graph["sam3_load"] = {"class_type": "easy sam3ModelLoader", "inputs": {"model": "sam3.safetensors", "segmentor": "image", "device": "cuda", "precision": "fp16"}}
+        graph["sam3_seg"] = {
+            "class_type": "easy sam3ImageSegmentation",
+            "inputs": {
+                "sam3_model": ["sam3_load", 0], "images": ["src", 0], "prompt": mask_target,
+                "threshold": 0.3, "keep_model_loaded": False, "add_background": "none", "detection_limit": -1,
+            },
+        }
+        graph["klein_noise_mask"] = {"class_type": "SetLatentNoiseMask", "inputs": {"samples": ["klein_src_latent", 0], "mask": ["sam3_seg", 0]}}
+
+    if editor == "qwen" and edit_mode == "masked_reference":
         # SAM3 mask -> SetLatentNoiseMask, mechanism proven in
         # RESULTS_masking_test1.md and reproduced under the current
         # environment in RESULTS_masking_test2_current_env.md. Deliberately
