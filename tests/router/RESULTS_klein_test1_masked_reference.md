@@ -300,11 +300,46 @@ better-understood problem than "back-to-back usage degrades VRAM margin,"
 which this chain test does not support.
 
 This is still a single 3-run chain (not repeated chains) and the cold-start
-condition has only n=2 - both would benefit from more samples before
-treating either number as a stable estimate, but the qualitative finding
-(back-to-back doesn't make things worse; cold-start is the tight point) is
-unlikely to flip with more data given how large the gap is (367/212 MiB vs.
-2100+ MiB).
+condition had only n=2 at the time - both would benefit from more samples
+before treating either number as a stable estimate, but the qualitative
+finding (back-to-back doesn't make things worse; cold-start is the tight
+point) is unlikely to flip with more data given how large the gap is
+(367/212 MiB vs. 2100+ MiB).
+
+### Cold-start sample, extended to n=5
+
+Three more independent `/free`'d `no_mask_save` runs (`cold_sweep_1/2/3`,
+seeds 424343/424344/424345, each verified as genuine execution via
+15.7-20.7s wall time - not a cache hit), combined with the 2 cold-start
+samples already above (the original single `no_mask_save` run and chain
+run 1):
+
+| Run | Min free VRAM |
+|---|---|
+| Original single run | 212 MiB |
+| Chain run 1 | 367 MiB |
+| `cold_sweep_1` | 452 MiB |
+| `cold_sweep_2` | 645 MiB |
+| `cold_sweep_3` | 967 MiB |
+
+n=5: min 212 MiB, max 967 MiB, mean ~529 MiB. **1 of 5 samples (20%) fell
+below the project's ~300 MiB safety floor; the other 4 (80%) cleared it,
+with margin ranging from comfortably safe (967 MiB) to barely safe (452
+MiB).** This is a genuinely mixed result, not a clean pass or fail: the
+cold-start margin is real and variable on this GPU/setup, not a fixed
+number - most cold starts have adequate headroom, but roughly 1-in-5 (on
+this small sample) does not. This does not clear a strict "always safe"
+bar, but it also does not show the margin as reliably unsafe. **Refined
+verdict for the router-integration decision: the masked_reference branch's
+cold-start VRAM margin is marginal, not comfortably safe** - proceeding
+with an opt-in router integration (Codex's option 1) without some headroom
+margin (e.g. a small `--reserve-vram` allocation, or accepting the
+occasional-OOM risk as a known limitation) would mean roughly 1-in-5 cold
+starts could plausibly OOM on this hardware, based on this sample. No
+analysis was done here of what caused the variance (452-967 MiB spread
+across cold_sweep_1/2/3 is itself large for nominally-identical repeated
+cold starts) - this could reflect other GPU processes' memory state at
+measurement time, not a property of this graph alone.
 
 ## Next steps (not yet done)
 
@@ -319,14 +354,16 @@ unlikely to flip with more data given how large the gap is (367/212 MiB vs.
    mechanism (see VRAM/timing section above), **not yet done for the Base
    checkpoint**.
 5. ~~Re-measure the router-representative (`no_mask_save`) VRAM condition
-   back-to-back without `/free`~~ - done (see Back-to-back chain subsection
-   above). Finding: back-to-back usage is NOT the risk (margin improves to
-   2100+ MiB); the cold-start-after-`/free` case is the tight point (n=2:
-   212, 367 MiB, straddling the ~300 MiB floor). **Still open: more
-   cold-start samples (n>2) to pin down whether the first-request margin is
-   reliably above or below the safety floor**, and/or a mitigation (not
-   loading SAM3 and the Klein UNet/CLIP simultaneously, reserve-vram-style
-   headroom) before this is safe to gate a router go/no-go decision on.
+   back-to-back without `/free`, extend cold-start to n>2~~ - done. Finding:
+   back-to-back usage is NOT the risk (margin improves to 2100+ MiB); the
+   cold-start-after-`/free` case is the tight point and, at n=5 (212-967
+   MiB, mean ~529), is **marginal, not reliably safe** - 1 of 5 samples
+   (20%) fell below the ~300 MiB floor. **Still open: a mitigation**
+   (not loading SAM3 and the Klein UNet/CLIP simultaneously, a small
+   `--reserve-vram` headroom allocation, or explicitly accepting an
+   occasional-cold-start-OOM risk) before a router go/no-go decision,
+   since this data does not support treating the cold-start margin as safe
+   by default.
 6. n>1 repeat-seed pass on the A/B/B2 (reference-present) variants too,
    before calling either checkpoint's positive result reliable rather than
    feasible.

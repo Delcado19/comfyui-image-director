@@ -165,6 +165,25 @@ if __name__ == "__main__":
             {"run": s["label"], "vram_free_min_mib": s["vram_free_min_mib"], "vram_used_max_mib": s["vram_used_max_mib"]}
             for s in summaries
         ]}, indent=2))
+    elif condition == "cold_sweep":
+        # Independent cold-start samples (added 2026-10-04, user-requested
+        # follow-up to the single no_mask_save/chain-run-1 results: 212 MiB
+        # and 367 MiB, both near the project's ~300 MiB safety floor) - each
+        # run calls /free first. Different seed per run is not required for
+        # correctness here (unlike the chain test): /free was already
+        # confirmed to force genuine re-execution even at an identical seed
+        # (the original with_mask_save -> no_mask_save pair both used seed
+        # 424242 and both executed for real, ~16-20s each, not a cache hit).
+        # Varied anyway for a cleaner independent-sample read.
+        n = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+        start_at = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+        summaries = []
+        for i in range(start_at, start_at + n):
+            summaries.append(run_condition(f"cold_sweep_{i}", False, out_dir, do_free=True, seed=SEED + 100 + i))
+        print(json.dumps({"cold_sweep_summary": [
+            {"run": s["label"], "vram_free_min_mib": s["vram_free_min_mib"], "vram_used_max_mib": s["vram_used_max_mib"]}
+            for s in summaries
+        ]}, indent=2))
     else:
         include_mask_preview = condition == "with_mask_save"
         run_condition(condition, include_mask_preview, out_dir)
