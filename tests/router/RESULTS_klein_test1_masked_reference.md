@@ -459,36 +459,55 @@ rather than modifying that validated script).
 | Run | Free VRAM | Peak VRAM |
 |---|---|---|
 | Baseline (no mitigation) | 445 MiB | 15533 MiB |
-| Mitigated (`VRAM_Debug`) | 459 MiB | 15519 MiB |
+| Mitigated (`VRAM_Debug`, conservative) | 459 MiB | 15519 MiB |
+| Mitigated (`PixaromaFreeVram`, mode="all") | **1210 MiB** | **14768 MiB** |
 
-**Verdict: no meaningful effect (+14 MiB, within noise - compare to the
-212-967 MiB spread already seen across unmitigated runs at the same
-conditions).** The output image was still correct (red dress, matching
-variant B's expected result), so the graph surgery didn't break anything,
-but `empty_cache`+`gc_collect` alone does not recover the margin. This
-weakens the "PyTorch caching-allocator fragmentation" hypothesis - if that
-were the main cause, an explicit `empty_cache()` call at the right point
-should have recovered at least some of it. The CLIP/UNET overlap is more
-likely structural (ComfyUI's dynamic loader needing both partially resident
-during the handoff) than a simple stale-cache issue, or `unload_all_models`
-(not tested, deliberately avoided for safety) would be needed to force the
-issue rather than just hint at it.
+**`VRAM_Debug` verdict: no meaningful effect** (+14 MiB, within noise -
+compare to the 212-967 MiB spread already seen across unmitigated runs at
+the same conditions). `empty_cache`+`gc_collect` alone does not recover the
+margin.
 
-**Follow-up candidate, not yet tested:** `PixaromaFreeVram` ("Free VRAM
-Pixaroma", `ComfyUI-Pixaroma`) - its own description describes this exact
-scenario ("a workflow with two heavy stages... the first model is still
-sitting in memory when the second one is asked for... put this node on the
-wire between the two and the first model is let go before the second is
-loaded") and offers an "All" mode that explicitly hands memory back to the
-card, which `VRAM_Debug`'s conservative `unload_all_models=False` setting
-does not attempt. Caveat: `PixaromaFreeVram` is `output_node: true`, the
-same property that made `mask_save` an extra execution root breaking the
+**`PixaromaFreeVram` verdict: real, substantial improvement.** Source read
+first (`node_free_vram.py` + `_free_vram_helpers.py`, both in
+`ComfyUI-Pixaroma`, per project discipline - not just the node's
+description): its hidden `FreeVramState` field's documented default
+(`"{}"` -> `DEFAULT_STATE`) is `mode="all"`, which runs `mm.unload_all_models()`
++ `gc.collect()` + `mm.soft_empty_cache(True)` - the full unload
+`VRAM_Debug`'s test deliberately avoided, done safely here because at this
+point in the graph (right after text encoding, before the sampler needs
+UNET) nothing but CLIP/VAE has actually loaded yet, so there is nothing
+else for `unload_all_models()` to wrongly evict. Inserted via the same
+conditioning-passthrough dependency pattern as `VRAM_Debug` (its `value`
+input/output pair, type `*`, passes the conditioning through unchanged
+while running the free as a side effect - the node is a documented no-op
+when `value` is left unwired, so wiring it in is what makes it act).
+`FreeVramState` was deliberately omitted from the submitted graph so the
+node's own schema default applies, rather than guessing a different
+explicit state. Result: **free VRAM margin nearly tripled (445 -> 1210 MiB,
++765 MiB) and peak usage dropped by the same amount (15533 -> 14768 MiB)**.
+Output image still correct (red dress), confirming `unload_all_models()`
+didn't corrupt anything mid-generation. This is the first mitigation tested
+that actually moves the needle, and by a wide enough margin (1210 MiB is
+comfortably above the ~300 MiB floor, well clear of every unmitigated
+cold-start sample's range of 212-967 MiB) that it looks like a real fix,
+not noise - though still only n=1 for the mitigated condition.
+
+**Updated overall verdict:** the earlier structural-overlap hypothesis
+(ComfyUI's dynamic loader needing CLIP and UNET briefly coexisting during
+the handoff) is now better supported in its SPECIFICS - the fact that an
+explicit `unload_all_models()` (not just `empty_cache`/`gc_collect`) is what
+it took to recover most of the margin suggests ComfyUI's own automatic
+eviction during that handoff is incomplete or delayed, and forcing a
+synchronous full unload at the right graph position closes most of the
+gap. `--reserve-vram` (this project's previously-proven mitigation for a
+similar problem, but requiring a restart of the shared ComfyUI instance,
+not done without asking) is no longer the only live option - this graph-
+level fix is testable and effective without touching ComfyUI's launch
+configuration at all. `PixaromaFreeVram` is `output_node: true` - the same
+property that made `mask_save` an extra execution root breaking the
 router's lazy generate/edit switch (see `build_router_graph.py`'s
 docstring) - using it inside the actual router (not just this standalone
-test) would need the same care. Its mode/threshold settings also appear to
-be configured via node-face UI widgets with a hidden JSON state field
-(`FreeVramState`) rather than plain typed inputs, which may complicate
-pure-API-JSON graph construction (not yet verified).
+test) would need the same care when the router integration is attempted.
 
 ## Next steps (not yet done)
 
@@ -502,16 +521,16 @@ pure-API-JSON graph construction (not yet verified).
 4. ~~Add VRAM sampling~~ - done for both checkpoints (see VRAM/timing
    sections above). Base: n=1, 637 MiB free, within distilled's n=5 range.
 5. ~~Re-measure the router-representative (`no_mask_save`) VRAM condition
-   back-to-back without `/free`, extend cold-start to n>2~~ - done. Finding:
-   back-to-back usage is NOT the risk (margin improves to 2100+ MiB); the
-   cold-start-after-`/free` case is the tight point and, at n=5 (212-967
-   MiB, mean ~529), is **marginal, not reliably safe** - 1 of 5 samples
-   (20%) fell below the ~300 MiB floor. **Still open: a mitigation**
-   (not loading SAM3 and the Klein UNet/CLIP simultaneously, a small
-   `--reserve-vram` headroom allocation, or explicitly accepting an
-   occasional-cold-start-OOM risk) before a router go/no-go decision,
-   since this data does not support treating the cold-start margin as safe
-   by default.
+   back-to-back without `/free`, extend cold-start to n>2, find a
+   mitigation~~ - done. Finding: back-to-back usage is NOT the risk (margin
+   improves to 2100+ MiB); the cold-start-after-`/free` case was the tight
+   point (n=5, 212-967 MiB, 1/5 below the ~300 MiB floor) **and is now
+   mitigated**: `PixaromaFreeVram` (mode="all") raised a representative
+   cold-start sample from 445 to 1210 MiB free (n=1 for the mitigated
+   condition - a larger sample would still be worth running before fully
+   retiring this as a solved problem, but the single result is well clear
+   of the floor). `VRAM_Debug` (conservative, no `unload_all_models`) was
+   tried first and had no effect - the fix needed the full unload.
 6. ~~n>1 repeat-seed pass on the A/B/B2 (reference-present) variants~~ -
    done for the **distilled** checkpoint (n=3, 0 failures, see above).
    **Still open for the Base checkpoint** (A/B/B2 remain n=1) - higher

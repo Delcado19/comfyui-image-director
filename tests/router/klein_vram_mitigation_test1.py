@@ -63,17 +63,46 @@ def inject_vram_debug(graph: dict, positive_node_ref: list) -> dict:
     return graph
 
 
-def run(label: str, use_mitigation: bool, out_dir: Path):
+def inject_pixaroma_free_vram(graph: dict, positive_node_ref: list) -> dict:
+    """Insert PixaromaFreeVram (ComfyUI-Pixaroma) in the same position. Source
+    read (node_free_vram.py + _free_vram_helpers.py) before use, per project
+    discipline: FreeVramState's documented default ("{}" -> DEFAULT_STATE) is
+    mode="all", which calls mm.unload_all_models() + gc.collect() +
+    mm.soft_empty_cache(True) - the full unload VRAM_Debug's test deliberately
+    avoided. Safe here because, at this point in the graph (right after text
+    encoding), UNET has not been requested to load yet - unload_all_models()
+    can only unload what's already loaded (CLIP, VAE), not something that
+    doesn't exist yet. "value" left unwired would make the node a no-op (its
+    own guard against firing when someone just drops it on a canvas to look
+    at it) - wiring positive_node_ref into it is what makes it actually act.
+    FreeVramState is deliberately omitted from the submitted graph so the
+    node's own schema default ("{}") applies, rather than guessing a
+    different explicit state."""
+    graph["pixaroma_free_vram"] = {
+        "class_type": "PixaromaFreeVram",
+        "inputs": {
+            "value": positive_node_ref,
+        },
+    }
+    return graph
+
+
+def run(label: str, mitigation: str, out_dir: Path):
+    # mitigation: "none" / "vram_debug" / "pixaroma"
     assert_queue_empty()
     free()
 
     graph_dict = build(SEED, PROMPT_B, REF_IMAGE_RED, profile="base", include_mask_preview=False)
     graph = graph_dict["prompt"]
 
-    if use_mitigation:
+    if mitigation == "vram_debug":
         original_positive = graph["guider"]["inputs"]["positive"]
         graph = inject_vram_debug(graph, original_positive)
         graph["guider"]["inputs"]["positive"] = ["vram_debug", 0]
+    elif mitigation == "pixaroma":
+        original_positive = graph["guider"]["inputs"]["positive"]
+        graph = inject_pixaroma_free_vram(graph, original_positive)
+        graph["guider"]["inputs"]["positive"] = ["pixaroma_free_vram", 0]
 
     csv_path = out_dir / f"vram_log_mitigation1_{label}.csv"
     hist_path = out_dir / f"history_mitigation1_{label}.json"
@@ -103,7 +132,7 @@ def run(label: str, use_mitigation: bool, out_dir: Path):
 
     outs = result.get("outputs", {})
     summary = {
-        "label": label, "use_mitigation": use_mitigation, "prompt_id": pid, "seed": SEED,
+        "label": label, "mitigation": mitigation, "prompt_id": pid, "seed": SEED,
         "wall_time_s": round(t1 - t0, 1),
         "status_completed": result.get("status", {}).get("completed"),
         "filenames": [i["filename"] for i in outs.get("save", {}).get("images", [])],
@@ -118,5 +147,6 @@ def run(label: str, use_mitigation: bool, out_dir: Path):
 if __name__ == "__main__":
     out_dir = Path("tests/router/runs")
     out_dir.mkdir(parents=True, exist_ok=True)
-    label = sys.argv[1]  # "baseline" or "mitigated"
-    run(label, use_mitigation=(label == "mitigated"), out_dir=out_dir)
+    label = sys.argv[1]  # "baseline" / "mitigated" (VRAM_Debug) / "pixaroma"
+    mitigation = {"baseline": "none", "mitigated": "vram_debug", "pixaroma": "pixaroma"}[label]
+    run(label, mitigation=mitigation, out_dir=out_dir)
