@@ -50,9 +50,17 @@ execution that silently treated the image as absent).
 """
 import json
 import sys
+import threading
+import time
+from pathlib import Path
 
 sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\lib")
 from comfy_submit import submit, poll_history, assert_queue_empty, free  # noqa: E402
+
+sys.path.insert(0, r"C:\Users\Delcado\Documents\Software_Projects\ComfyUI\comfyui-image-director\tests\router")
+from klein_vram_test1 import sample_vram  # noqa: E402 - reuse the same loop-mode sampler
+
+OUT_DIR = Path("tests/router/runs")
 
 UNET_NAME = r"Qwen Image 2.1\qwenImage21Nvfp4Q4_nvfp4.safetensors"
 CLIP_NAME = r"Qwen Image 2.1\qwen3vl_8b_w4a8.safetensors"
@@ -61,6 +69,14 @@ VAE_NAME = r"Qwen Image 2.1\qwen_image_2.1_vae_bf16.safetensors"
 SOURCE_IMAGE = "imgdir_masktest2_source_bluedress.png"
 REF_IMAGE_RED = "imgdir_masktest2_ref_red.png"
 REF_IMAGE_GREEN = "imgdir_masktest2_ref_green.png"
+# Real leather photo (user-supplied, not synthetic) - already used and
+# proven for the Flux.2 Dev material test (RESULTS_flux2dev_masking_test1.md).
+# Unlike that graph, no manual reference-scaling guard is needed here:
+# TextEncodeQwenImage21 already resizes every image (including references)
+# to ~`resolution`x`resolution` internally (per its own tooltip), so the
+# 3000x2000 source photo cannot blow up VRAM the way it did for the
+# hand-built Dev graph.
+REF_IMAGE_LEATHER = "imgdir_masktest2_ref_leather.png"
 
 # No color named, deliberately - same wording family as the Klein/Dev tests'
 # proven PROMPT_B, adapted to name the images explicitly (this node has no
@@ -102,27 +118,56 @@ def build(seed: int, ref_image: str | None) -> dict:
     return {"prompt": graph}
 
 
-def run_variant(name: str, seed: int, ref_image: str | None):
+def run_variant(name: str, seed: int, ref_image: str | None, sample_vram_flag: bool = False):
     assert_queue_empty()
     free()
     graph = build(seed, ref_image)
     with open(f"tests/router/runs/qwen21_reftest1_variant{name}.graph.json", "w", encoding="utf-8") as f:
         json.dump(graph, f, indent=2, ensure_ascii=False)
+
+    gaps: list = []
+    stop_event = threading.Event()
+    sampler = None
+    csv_path = OUT_DIR / f"vram_log_qwen21reftest1_{name}.csv"
+    if sample_vram_flag:
+        sampler = threading.Thread(target=sample_vram, args=(csv_path, stop_event, gaps), daemon=True)
+        sampler.start()
+        time.sleep(0.3)
+
+    t0 = time.time()
     pid = submit(graph)
     print(json.dumps({"event": "submitted", "variant": name, "prompt_id": pid}))
     result = poll_history(pid, timeout_s=300)
+    t1 = time.time()
+
+    vram_free_min_mib = None
+    vram_used_max_mib = None
+    if sample_vram_flag:
+        time.sleep(0.3)
+        stop_event.set()
+        sampler.join(timeout=3)
+        rows = [ln.strip().split(",") for ln in csv_path.read_text(encoding="utf-8").splitlines()[1:] if ln.strip()]
+        free_vals = [int(r[2]) for r in rows if len(r) == 3]
+        used_vals = [int(r[1]) for r in rows if len(r) == 3]
+        vram_free_min_mib = min(free_vals) if free_vals else None
+        vram_used_max_mib = max(used_vals) if used_vals else None
+
     outs = result.get("outputs", {})
     summary = {
         "variant": name, "prompt_id": pid,
+        "wall_time_s": round(t1 - t0, 1),
         "status_completed": result.get("status", {}).get("completed"),
         "filenames": [i["filename"] for i in outs.get("save", {}).get("images", [])],
+        "vram_free_min_mib": vram_free_min_mib,
+        "vram_used_max_mib": vram_used_max_mib,
     }
     print(json.dumps(summary, indent=2))
     return summary
 
 
 if __name__ == "__main__":
-    variant = sys.argv[1]  # "B", "D", "B2"
+    variant = sys.argv[1]  # "B", "D", "B2", "M"
     seed = int(sys.argv[2]) if len(sys.argv) > 2 else 424242
-    variants = {"B": REF_IMAGE_RED, "D": None, "B2": REF_IMAGE_GREEN}
-    run_variant(variant, seed, variants[variant])
+    variants = {"B": REF_IMAGE_RED, "D": None, "B2": REF_IMAGE_GREEN, "M": REF_IMAGE_LEATHER}
+    sample_vram_flag = "--vram" in sys.argv
+    run_variant(variant, seed, variants[variant], sample_vram_flag=sample_vram_flag)

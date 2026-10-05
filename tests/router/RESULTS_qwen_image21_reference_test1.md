@@ -52,6 +52,34 @@ locality-preserving, causally reference-driven" - see below.
 All three: `status_completed=true`, no `[ERROR]` log lines, visually
 inspected (not assumed from a non-error exit code).
 
+## Material/texture + VRAM/timing (combined in one run, seed 424243)
+
+Variant M: same source, prompt, and mechanism as B/D/B2, reference swapped
+for the real leather photo already used and proven for the Flux.2 Dev
+material test (`imgdir_masktest2_ref_leather.png` - a genuine photograph,
+not a synthetic texture). Unlike the hand-built Dev graph, no manual
+reference-scaling guard was needed: `TextEncodeQwenImage21` already resizes
+every image (source and references alike) to ~`resolution`x`resolution`
+internally, so the 3000x2000 source photo could not blow up VRAM the way it
+did for Dev's raw `VAEEncode` graph.
+
+- **Result**: the masked dress shows visible leather grain, wrinkle
+  shading, and specular highlights - genuinely reads as leather, not a flat
+  dark fill. Scene preservation held again (face, pose, background
+  pixel-identical to source). On this first sample, this is a **cleaner**
+  material result than Flux.2 Dev's (which only unambiguously read as
+  "leather" at 1 of 2 tested seeds - this is n=1 here, not yet compared
+  across seeds).
+- **Timing**: 25.5s wall time - longer than B/D/B2's ~10-13s (likely the
+  3000x2000 source photo's internal resize/preprocessing cost), but still
+  roughly 30x faster than Flux.2 Dev's material-variant runtime (~828-840s).
+- **VRAM**: 1753 MiB free minimum / 14,225 MiB used maximum - comfortably
+  above the project's 300 MiB floor, in the same range as Dev's
+  router-representative measurement (1645 MiB) despite Qwen-Image-2.1's
+  much smaller model footprint (~4GB UNET + ~6.3GB text encoder vs. Dev's
+  ~18GB UNET) - not yet explained why the margins land similarly; worth
+  checking at a later point rather than assumed.
+
 ## Comparison to this project's other masked/reference mechanisms
 
 This is, at n=1, a **stronger result than either Klein or Flux.2 Dev's
@@ -67,29 +95,29 @@ masking-based approach**, on every axis measured so far:
 - **Graph complexity**: one conditioning node
   (`TextEncodeQwenImage21`) replaces SAM3 segmentation +
   `SetLatentNoiseMask` + manual `ReferenceLatent` chaining entirely - no
-  VRAM-mitigation gate needed either (not yet measured, but the model is
-  far smaller: ~4GB UNET + ~6.3GB text encoder vs. Dev's 17.9GB UNET alone).
+  VRAM-mitigation gate needed, and the measured margin (1753 MiB free) is
+  comfortably above the project's 300 MiB floor without one.
+- **Material/texture**: also cleaner than Dev's (see above) at n=1.
 
 **This does not retroactively validate Klein/Dev's results or invalidate
 them** - those remain correct for their own mechanisms. It also does not
-yet prove Qwen-Image-2.1 is production-ready: n=1, one easy fixture, a
-third-party "Native Test" community quant (not an official release), no
-VRAM/timing characterization, no material/texture test, no second seed, no
-numeric locality check (the Klein/Dev tests both eventually got one - this
-hasn't yet).
+yet prove Qwen-Image-2.1 is production-ready: n=1 per variant, one easy
+fixture, a third-party "Native Test" community quant (not an official
+release), no second seed, no numeric locality check (the Klein/Dev tests
+both eventually got one - this hasn't yet).
 
 ## What this does and does not establish
 
 **Established**: the native mechanism works and, on this first sample,
-outperforms every masking-based approach this project built, at
-dramatically lower engineering complexity.
+outperforms every masking-based approach this project built on every axis
+measured (locality, causal color-follow, material/texture, speed, VRAM
+margin, graph complexity) - at dramatically lower engineering complexity.
 
-**Not yet established**: reliability across seeds, material/texture
-transfer (not just flat-color swatches), VRAM/timing margins, behavior on
-harder content (the original case-3 motivation this whole investigation
-traces back to - Klein was judged "not capable enough" for a SPECIFIC
-harder scenario, not this easy fixture), whether this holds for the
-eventual official (non-community-quant) release, and whether `resolution`/
+**Not yet established**: reliability across seeds (every variant here is
+n=1), behavior on harder content (the original case-3 motivation this
+whole investigation traces back to - Klein was judged "not capable enough"
+for a SPECIFIC harder scenario, not this easy fixture), whether this holds
+for the eventual official (non-community-quant) release, and whether `resolution`/
 prompt-wording choices made here are actually load-bearing or just happened
 to work on the first try.
 
