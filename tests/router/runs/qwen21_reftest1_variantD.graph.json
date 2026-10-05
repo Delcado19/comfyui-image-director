@@ -65,7 +65,7 @@
           "encode",
           2
         ],
-        "seed": 424243,
+        "seed": 777777,
         "steps": 40,
         "cfg": 1,
         "sampler_name": "euler",

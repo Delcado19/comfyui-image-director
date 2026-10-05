@@ -80,6 +80,23 @@ did for Dev's raw `VAEEncode` graph.
   ~18GB UNET) - not yet explained why the margins land similarly; worth
   checking at a later point rather than assumed.
 
+## Second-seed cross-check (seed 777777, B/D/B2/M)
+
+All four variants repeated at a second seed, same prompts/references:
+
+- **B** (red): dress red again, scene preserved.
+- **D** (ablation): dress stayed blue again, scene preserved.
+- **B2** (green): dress green again, scene preserved.
+- **M** (leather): visible wrinkle/sheen structure again, scene preserved.
+
+**4/4 consistent with seed 424243 - a clean 2/2 result across the whole
+causal matrix, including material.** No seed-dependent material-identity
+softness was observed here (unlike Dev's result, where only 1 of 2 seeds
+unambiguously read as "leather" - both Qwen-Image-2.1 seeds show comparable
+structured sheen). Wall times at this seed: B 25.0s, D 18.1s, B2 24.9s, M
+24.8s - consistent with the first-seed figures, no VRAM/timing sampling run
+at this seed (not yet combined with a third repeat).
+
 ## Comparison to this project's other masked/reference mechanisms
 
 This is, at n=1, a **stronger result than either Klein or Flux.2 Dev's
@@ -101,25 +118,25 @@ masking-based approach**, on every axis measured so far:
 
 **This does not retroactively validate Klein/Dev's results or invalidate
 them** - those remain correct for their own mechanisms. It also does not
-yet prove Qwen-Image-2.1 is production-ready: n=1 per variant, one easy
+yet prove Qwen-Image-2.1 is production-ready: n=2 per variant, one easy
 fixture, a third-party "Native Test" community quant (not an official
-release), no second seed, no numeric locality check (the Klein/Dev tests
-both eventually got one - this hasn't yet).
+release), no numeric locality check (the Klein/Dev tests both eventually
+got one - this hasn't yet).
 
 ## What this does and does not establish
 
-**Established**: the native mechanism works and, on this first sample,
+**Established**: the native mechanism works, reproduces cleanly at n=2
+across the full causal matrix (color-follow and material alike), and
 outperforms every masking-based approach this project built on every axis
 measured (locality, causal color-follow, material/texture, speed, VRAM
 margin, graph complexity) - at dramatically lower engineering complexity.
 
-**Not yet established**: reliability across seeds (every variant here is
-n=1), behavior on harder content (the original case-3 motivation this
-whole investigation traces back to - Klein was judged "not capable enough"
-for a SPECIFIC harder scenario, not this easy fixture), whether this holds
-for the eventual official (non-community-quant) release, and whether `resolution`/
-prompt-wording choices made here are actually load-bearing or just happened
-to work on the first try.
+**Not yet established**: behavior on harder content (the original case-3
+motivation this whole investigation traces back to - Klein was judged "not
+capable enough" for a SPECIFIC harder scenario, not this easy fixture),
+whether this holds for the eventual official (non-community-quant) release,
+and whether `resolution`/prompt-wording choices made here are actually
+load-bearing or just happened to work on the first try.
 
 ## Files
 
