@@ -1,0 +1,110 @@
+{
+  "prompt": {
+    "src": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "imgdir_masktest2_source_bluedress.png"
+      }
+    },
+    "unet": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "Qwen Image 2.1\\qwenImage21Nvfp4Q4_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "clip": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "Qwen Image 2.1\\qwen3vl_8b_w4a8.safetensors",
+        "type": "qwen_image"
+      }
+    },
+    "vae": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "Qwen Image 2.1\\qwen_image_2.1_vae_bf16.safetensors"
+      }
+    },
+    "ref": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "imgdir_masktest2_ref_red.png"
+      }
+    },
+    "encode": {
+      "class_type": "TextEncodeQwenImage21",
+      "inputs": {
+        "clip": [
+          "clip",
+          0
+        ],
+        "vae": [
+          "vae",
+          0
+        ],
+        "prompt": "Change only the woman's dress in the first image to match the second reference image. Keep her face, pose, and the entire background exactly unchanged.",
+        "negative_prompt": "",
+        "resolution": 1024,
+        "images.image_1": [
+          "src",
+          0
+        ],
+        "images.image_2": [
+          "ref",
+          0
+        ]
+      }
+    },
+    "sample": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "unet",
+          0
+        ],
+        "positive": [
+          "encode",
+          0
+        ],
+        "negative": [
+          "encode",
+          1
+        ],
+        "latent_image": [
+          "encode",
+          2
+        ],
+        "seed": 424243,
+        "steps": 40,
+        "cfg": 1,
+        "sampler_name": "euler",
+        "scheduler": "normal",
+        "denoise": 1.0
+      }
+    },
+    "decode": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "sample",
+          0
+        ],
+        "vae": [
+          "vae",
+          0
+        ]
+      }
+    },
+    "save": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "decode",
+          0
+        ],
+        "filename_prefix": "ImageDirector_QwenImage21RefTest1"
+      }
+    }
+  }
+}
