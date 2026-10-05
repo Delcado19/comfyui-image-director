@@ -177,6 +177,61 @@ unchanged (cfg=1.2, 28 steps, dpmpp_sde, Flux2Scheduler,
 SamplerCustomAdvanced/CFGGuider) - Klein's 4-step KSampler and VRAM_Debug
 gate are deliberately NOT ported here; Dev's measured margin does not need
 mitigation, and porting Klein's sampler settings was never tested for Dev.
+
+edit_mode="native_reference" / editor="qwen_image21" (added 2026-10-05,
+joint Claude-Codex decision, two Codex exec rounds - read-only review of
+this file + tests/router/qwen_image21_reference_test1.py +
+RESULTS_qwen_image21_reference_test1.md): a NEW edit_mode, not a new
+editor under masked_reference. Reason: TextEncodeQwenImage21 needs no SAM3
+mask and no VAEEncode(source)+SetLatentNoiseMask anchoring at all - the
+sampled latent is fully empty (torch.zeros), and locality comes entirely
+from the model's own Qwen3VL multimodal understanding of "first image" vs
+"second reference image", not from a mask. Forcing it into
+edit_mode="masked_reference" would be misleading (that mode's own asserts
+require mask_target always, and reference_description for editor="qwen") -
+neither concept applies here. native_reference therefore requires NEITHER
+mask_target NOR reference_description, and currently supports ONLY
+editor="qwen_image21" (the inverse also holds - qwen_image21 is not valid
+under masked_reference). Exactly 1 reference image (image2), matching what
+RESULTS_qwen_image21_reference_test1.md actually validated, even though
+the node's own schema supports up to 16.
+
+Codex's first-round review also recommended wiring this branch's prompt to
+edit_prompt_str (the analyzer's own free-form output), to make the
+analyzer a real part of the execution path. Objected to and revised in a
+second round: every validated result in RESULTS_qwen_image21_reference_test1.md
+used the fixed, hand-written PROMPT_B wording (or the deliberately-harmful
+PROMPT_H/PROMPT_C3 variants) - never the analyzer's GUIDANCE-driven free
+text - and the existing masked_reference editors already establish the
+same precedent (fixed templates, not edit_prompt_str, for their
+branch-specific prompts, for the same "analyzer free text is unreliable
+for gating render behavior" reason the edit_mode docstring entry above
+gives). QWEN21_PROMPT below is therefore the literal validated PROMPT_B
+text, unparameterized. This makes the branch an explicit dress-color/
+material-transfer path for now, not general-purpose reference editing - a
+caller-supplied subject parameter was considered and deliberately deferred
+(would need its own validation pass, not covered by any test run so far).
+No dependency-injection scheduling gate is needed here: the lazy-switch
+guarantee described in this docstring's "Scheduling note" above (the edit
+branch cannot enter the pending execution set before the analyzer
+finishes) already covers this branch the same as every other editor.
+
+Wiring risk specific to this node (documented in
+qwen_image21_reference_test1.py's own docstring, re-flagged here since
+it's easy to silently get wrong again): TextEncodeQwenImage21's `images`
+input is a COMFY_AUTOGROW_V3 dynamic input - it does NOT accept a nested
+`"images": {"image_1": [...], ...}` dict (ComfyUI's validation accepts
+that silently, with no node_errors, and the image is then just ignored).
+Use "images.image_1"/"images.image_2" as direct top-level dotted keys in
+the node's `inputs` dict instead - see qwen21_encode below.
+
+Known evidence gaps, not yet closed by this integration: no numeric
+locality check has been run for this mechanism anywhere in this project
+(RESULTS_qwen_image21_reference_test1.md's "pixel-identical" claims are
+visual observations, same caveat as the standalone test); the 1753 MiB
+VRAM margin was measured in the standalone script, not in this router
+topology or under back-to-back-without-/free sequencing; and this remains
+a third-party NVFP4 community quant, not an official release.
 """
 import json
 import sys
@@ -218,6 +273,23 @@ DEV_MASKED_PROMPT_TEMPLATE = (
     "Keep everything outside the mask unchanged."
 )
 
+# Qwen-Image-2.1 native_reference branch (editor="qwen_image21"). Paths and
+# wiring match tests/router/qwen_image21_reference_test1.py exactly - that
+# script is the validated source of truth for this mechanism. No SAM3 mask,
+# no scaling, no reference megapixel cap - TextEncodeQwenImage21 resizes
+# every image internally (source and reference alike).
+QWEN21_UNET_PATH = r"Qwen Image 2.1\qwenImage21Nvfp4Q4_nvfp4.safetensors"
+QWEN21_CLIP_PATH = r"Qwen Image 2.1\qwen3vl_8b_w4a8.safetensors"
+QWEN21_VAE_PATH = r"Qwen Image 2.1\qwen_image_2.1_vae_bf16.safetensors"
+# Literal validated PROMPT_B wording from
+# RESULTS_qwen_image21_reference_test1.md, unparameterized - see module
+# docstring's 2026-10-05 editor="qwen_image21" entry for why this is not
+# wired to edit_prompt_str or a mask_target-style template.
+QWEN21_PROMPT = (
+    "Change only the woman's dress in the first image to match the second reference image. "
+    "Keep her face, pose, and the entire background exactly unchanged."
+)
+
 GUIDANCE = """You are creating a structured plan for an image generation/editing pipeline. schema_version is always "1.0". If this is a text-to-image request unrelated to the attached image(s), use task="generate" - ignore the attached image(s) entirely in that case. If the request modifies the attached image, use task="edit": set is_local_region to true only if just one specific subject/region should change and everything else must stay the same (false if the whole image is being transformed/restyled), list "images" with image1 (role "source"){reference_note}, describe the needed edit(s), and list what must be preserved. For edits[]: only list things that actually change; use subject "entire image"/region "full image" only when no more specific subject exists; the prompt field must be one clean instruction for an image model, no markdown or commentary.
 
 Instruction: {instruction}"""
@@ -250,10 +322,15 @@ def build(
     # have a file by that name; pass a real filename explicitly otherwise.
     refs = refs or []
     assert 0 <= len(refs) <= 2, "router supports 0-2 reference images (image2, image3)"
-    assert edit_mode in ("plain", "masked_reference"), f"edit_mode must be 'plain' or 'masked_reference', got: {edit_mode!r}"
-    assert editor in ("qwen", "klein_distilled", "flux2_dev"), f"editor must be 'qwen', 'klein_distilled', or 'flux2_dev', got: {editor!r}"
+    assert edit_mode in ("plain", "masked_reference", "native_reference"), f"edit_mode must be 'plain', 'masked_reference', or 'native_reference', got: {edit_mode!r}"
+    assert editor in ("qwen", "klein_distilled", "flux2_dev", "qwen_image21"), f"editor must be 'qwen', 'klein_distilled', 'flux2_dev', or 'qwen_image21', got: {editor!r}"
     if editor in ("klein_distilled", "flux2_dev"):
         assert edit_mode == "masked_reference", f"editor={editor!r} is only supported for edit_mode='masked_reference' - plain mode always stays on Qwen, see module docstring"
+    if editor == "qwen_image21":
+        assert edit_mode == "native_reference", f"editor='qwen_image21' is only supported for edit_mode='native_reference' (no SAM3 mask involved), got edit_mode={edit_mode!r} - see module docstring"
+    if edit_mode == "native_reference":
+        assert editor == "qwen_image21", f"edit_mode='native_reference' currently only supports editor='qwen_image21', got: {editor!r}"
+        assert len(refs) == 1, "native_reference mode supports exactly 1 reference image (image2) - matches the validated RESULTS_qwen_image21_reference_test1.md setup, the node's own 16-reference schema limit is not yet exercised here"
     if edit_mode == "masked_reference":
         assert len(refs) == 1, "masked_reference mode supports exactly 1 reference image (the proven RESULTS_masking_test1/2 setup - 'Reference Image #2' is hardcoded singular in the prompt template)"
         assert mask_target and mask_target.strip(), "masked_reference mode requires an explicit mask_target (the SAM3 segmentation prompt, e.g. 'the woman's dress') - not derived from the analyzer's plan, see module docstring"
@@ -536,6 +613,41 @@ def build(
             },
         }
         graph["dev_noise_mask"] = {"class_type": "SetLatentNoiseMask", "inputs": {"samples": ["dev_src_latent", 0], "mask": ["sam3_seg", 0]}}
+
+    elif editor == "qwen_image21":
+        # EDIT branch (Qwen-Image-2.1 NVFP4 community quant, native_reference
+        # only) - see module docstring's 2026-10-05 editor="qwen_image21"
+        # entry for the full design rationale, the Codex-reconciled prompt
+        # decision, and the Autogrow wiring risk. Mirrors
+        # qwen_image21_reference_test1.py's validated graph shape exactly:
+        # no SAM3 mask, no VAEEncode(source)/SetLatentNoiseMask anchoring -
+        # the encoder's own empty-latent output is used directly as
+        # latent_image. No dependency-injection scheduling gate needed (see
+        # docstring's "Scheduling note").
+        graph.update({
+            "qwen21_unet": {"class_type": "UNETLoader", "inputs": {"unet_name": QWEN21_UNET_PATH, "weight_dtype": "default"}},
+            "qwen21_clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": QWEN21_CLIP_PATH, "type": "qwen_image"}},
+            "qwen21_vae": {"class_type": "VAELoader", "inputs": {"vae_name": QWEN21_VAE_PATH}},
+            "qwen21_encode": {
+                "class_type": "TextEncodeQwenImage21",
+                "inputs": {
+                    "clip": ["qwen21_clip", 0], "vae": ["qwen21_vae", 0],
+                    "prompt": QWEN21_PROMPT, "negative_prompt": "", "resolution": 1024,
+                    # Dotted top-level keys, NOT a nested "images": {...} dict -
+                    # see module docstring's wiring-risk note.
+                    "images.image_1": ["src", 0], "images.image_2": ["ref2", 0],
+                },
+            },
+            "qwen21_sample": {
+                "class_type": "KSampler",
+                "inputs": {
+                    "model": ["qwen21_unet", 0], "positive": ["qwen21_encode", 0], "negative": ["qwen21_encode", 1],
+                    "latent_image": ["qwen21_encode", 2], "seed": seed, "steps": 40, "cfg": 1,
+                    "sampler_name": "euler", "scheduler": "normal", "denoise": 1.0,
+                },
+            },
+            "edit_image": {"class_type": "VAEDecode", "inputs": {"samples": ["qwen21_sample", 0], "vae": ["qwen21_vae", 0]}},
+        })
 
     if editor == "qwen" and edit_mode == "masked_reference":
         # SAM3 mask -> SetLatentNoiseMask, mechanism proven in

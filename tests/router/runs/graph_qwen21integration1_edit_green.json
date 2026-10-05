@@ -1,0 +1,284 @@
+{
+  "prompt": {
+    "src": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "imgdir_masktest2_source_bluedress.png"
+      }
+    },
+    "ref2": {
+      "class_type": "LoadImage",
+      "inputs": {
+        "image": "imgdir_masktest2_ref_green.png"
+      }
+    },
+    "analyzer": {
+      "class_type": "QwenVLStructuredGGUF",
+      "inputs": {
+        "model_path": "G:\\ComfyUI-Easy-Install\\ComfyUI\\models\\llm\\GGUF\\huihui-ai\\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\\Qwen2.5-VL-7B-Instruct-abliterated.Q4_K_M.gguf",
+        "mmproj_path": "G:\\ComfyUI-Easy-Install\\ComfyUI\\models\\llm\\GGUF\\huihui-ai\\Qwen2.5-VL-7B-Instruct-abliterated-GGUF\\Qwen2.5-VL-7B-Instruct-abliterated.mmproj-f16.gguf",
+        "prompt": "You are creating a structured plan for an image generation/editing pipeline. schema_version is always \"1.0\". If this is a text-to-image request unrelated to the attached image(s), use task=\"generate\" - ignore the attached image(s) entirely in that case. If the request modifies the attached image, use task=\"edit\": set is_local_region to true only if just one specific subject/region should change and everything else must stay the same (false if the whole image is being transformed/restyled), list \"images\" with image1 (role \"source\") plus image2 (a reference image - give it a role and use reference_slots on any edits[] entry that draws on it), describe the needed edit(s), and list what must be preserved. For edits[]: only list things that actually change; use subject \"entire image\"/region \"full image\" only when no more specific subject exists; the prompt field must be one clean instruction for an image model, no markdown or commentary.\n\nInstruction: Change the color of the dress in this photo.",
+        "json_schema": "{\"oneOf\": [{\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"schema_version\", \"task\", \"user_instruction\", \"prompt\"], \"properties\": {\"schema_version\": {\"const\": \"1.0\"}, \"task\": {\"const\": \"generate\"}, \"user_instruction\": {\"type\": \"string\", \"minLength\": 1}, \"prompt\": {\"type\": \"string\", \"minLength\": 1}}}, {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"schema_version\", \"task\", \"user_instruction\", \"prompt\", \"is_local_region\", \"images\", \"edits\", \"preserve\"], \"properties\": {\"schema_version\": {\"const\": \"1.0\"}, \"task\": {\"const\": \"edit\"}, \"user_instruction\": {\"type\": \"string\", \"minLength\": 1}, \"prompt\": {\"type\": \"string\", \"minLength\": 1}, \"is_local_region\": {\"type\": \"boolean\"}, \"images\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"image1\", \"image2\"], \"properties\": {\"image1\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"role\"], \"properties\": {\"role\": {\"const\": \"source\"}}}, \"image2\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"role\"], \"properties\": {\"role\": {\"enum\": [\"garment_reference\", \"material_style_reference\", \"identity_reference\", \"object_reference\", \"pose_reference\", \"scene_reference\", \"other_reference\"]}}}}}, \"edits\": {\"type\": \"array\", \"minItems\": 1, \"items\": {\"type\": \"object\", \"additionalProperties\": false, \"required\": [\"subject\", \"region\", \"operation\", \"reference_slots\"], \"properties\": {\"subject\": {\"type\": \"string\", \"minLength\": 1}, \"region\": {\"type\": \"string\", \"minLength\": 1}, \"operation\": {\"enum\": [\"add\", \"adjust\", \"remove\", \"replace\", \"restyle\"]}, \"reference_slots\": {\"type\": \"array\", \"minItems\": 1, \"items\": {\"const\": \"image2\"}}}}}, \"preserve\": {\"type\": \"array\", \"minItems\": 1, \"items\": {\"type\": \"string\", \"minLength\": 1}}}}]}",
+        "max_tokens": 512,
+        "temperature": 0.1,
+        "top_p": 0.9,
+        "repetition_penalty": 1.2,
+        "seed": 424243,
+        "ctx": 8192,
+        "gpu_layers": -1,
+        "keep_model_loaded": false,
+        "free_vram_before_load": true,
+        "image": [
+          "src",
+          0
+        ],
+        "image2": [
+          "ref2",
+          0
+        ]
+      }
+    },
+    "task_str": {
+      "class_type": "JsonExtractString",
+      "inputs": {
+        "json_string": [
+          "analyzer",
+          0
+        ],
+        "key": "task"
+      }
+    },
+    "edit_prompt_str": {
+      "class_type": "JsonExtractString",
+      "inputs": {
+        "json_string": [
+          "analyzer",
+          0
+        ],
+        "key": "prompt"
+      }
+    },
+    "is_edit": {
+      "class_type": "easy compare",
+      "inputs": {
+        "a": [
+          "task_str",
+          0
+        ],
+        "b": "edit",
+        "comparison": "a == b"
+      }
+    },
+    "gen_unet": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "Z-Image Turbo\\jibMixZIT_v10.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "gen_clip": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "Z-Image\\Lockout-Qwen3-4b-heretic-v2.safetensors",
+        "type": "lumina2"
+      }
+    },
+    "gen_vae": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "Flux.1 - Z-Image - HiDream\\ae.safetensors"
+      }
+    },
+    "gen_cond_pos": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "clip": [
+          "gen_clip",
+          0
+        ],
+        "text": [
+          "edit_prompt_str",
+          0
+        ]
+      }
+    },
+    "gen_cond_neg": {
+      "class_type": "ConditioningZeroOut",
+      "inputs": {
+        "conditioning": [
+          "gen_cond_pos",
+          0
+        ]
+      }
+    },
+    "gen_model": {
+      "class_type": "ModelSamplingAuraFlow",
+      "inputs": {
+        "model": [
+          "gen_unet",
+          0
+        ],
+        "shift": 3
+      }
+    },
+    "gen_latent": {
+      "class_type": "EmptySD3LatentImage",
+      "inputs": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    "gen_sample": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "gen_model",
+          0
+        ],
+        "positive": [
+          "gen_cond_pos",
+          0
+        ],
+        "negative": [
+          "gen_cond_neg",
+          0
+        ],
+        "latent_image": [
+          "gen_latent",
+          0
+        ],
+        "seed": 424243,
+        "steps": 8,
+        "cfg": 1,
+        "sampler_name": "res_multistep",
+        "scheduler": "simple",
+        "denoise": 1
+      }
+    },
+    "gen_image": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "gen_sample",
+          0
+        ],
+        "vae": [
+          "gen_vae",
+          0
+        ]
+      }
+    },
+    "switch": {
+      "class_type": "easy ifElse",
+      "inputs": {
+        "boolean": [
+          "is_edit",
+          0
+        ],
+        "on_true": [
+          "edit_image",
+          0
+        ],
+        "on_false": [
+          "gen_image",
+          0
+        ]
+      }
+    },
+    "save": {
+      "class_type": "SaveImage",
+      "inputs": {
+        "images": [
+          "switch",
+          0
+        ],
+        "filename_prefix": "ImageDirector_router"
+      }
+    },
+    "qwen21_unet": {
+      "class_type": "UNETLoader",
+      "inputs": {
+        "unet_name": "Qwen Image 2.1\\qwenImage21Nvfp4Q4_nvfp4.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    "qwen21_clip": {
+      "class_type": "CLIPLoader",
+      "inputs": {
+        "clip_name": "Qwen Image 2.1\\qwen3vl_8b_w4a8.safetensors",
+        "type": "qwen_image"
+      }
+    },
+    "qwen21_vae": {
+      "class_type": "VAELoader",
+      "inputs": {
+        "vae_name": "Qwen Image 2.1\\qwen_image_2.1_vae_bf16.safetensors"
+      }
+    },
+    "qwen21_encode": {
+      "class_type": "TextEncodeQwenImage21",
+      "inputs": {
+        "clip": [
+          "qwen21_clip",
+          0
+        ],
+        "vae": [
+          "qwen21_vae",
+          0
+        ],
+        "prompt": "Change only the woman's dress in the first image to match the second reference image. Keep her face, pose, and the entire background exactly unchanged.",
+        "negative_prompt": "",
+        "resolution": 1024,
+        "images.image_1": [
+          "src",
+          0
+        ],
+        "images.image_2": [
+          "ref2",
+          0
+        ]
+      }
+    },
+    "qwen21_sample": {
+      "class_type": "KSampler",
+      "inputs": {
+        "model": [
+          "qwen21_unet",
+          0
+        ],
+        "positive": [
+          "qwen21_encode",
+          0
+        ],
+        "negative": [
+          "qwen21_encode",
+          1
+        ],
+        "latent_image": [
+          "qwen21_encode",
+          2
+        ],
+        "seed": 424243,
+        "steps": 40,
+        "cfg": 1,
+        "sampler_name": "euler",
+        "scheduler": "normal",
+        "denoise": 1.0
+      }
+    },
+    "edit_image": {
+      "class_type": "VAEDecode",
+      "inputs": {
+        "samples": [
+          "qwen21_sample",
+          0
+        ],
+        "vae": [
+          "qwen21_vae",
+          0
+        ]
+      }
+    }
+  }
+}
