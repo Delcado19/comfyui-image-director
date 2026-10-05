@@ -131,6 +131,39 @@ original case-3 scenario itself (different source/reference images, which
 no longer exist). A literal re-run with an actual black-garment source
 photo would be a stronger test, if such a photo becomes available.
 
+## Variant C3: literal case-3 recreation (seeds 424242, 777777)
+
+The original case-3 fixtures (`IMG_7148.jpg`, `imgdir_test_ref2.png`) are
+unrecoverable, but the user supplied a real replacement photo matching the
+same shape: a person wearing a black latex/leather garment outdoors, with a
+rich background (sea, mountains, blue railing, pink roses, greenery) -
+`imgdir_casetest3_source_blackdress_cannes.png`, converted from a
+user-supplied JPG/WebP photo. Paired with a newly-generated solid blue
+512x512 swatch (`imgdir_masktest2_ref_blue.png`, matching the style of the
+existing red/green swatches) to match the original black-dress/blue-swatch
+colors exactly. Prompt is `PROMPT_H`'s exact harmful wording pattern,
+reworded for this fixture's colors:
+
+> "The woman is wearing a black dress that needs to be changed to match the
+> color from Reference Image #2, which appears as a solid blue background.
+> The rest should remain unchanged."
+
+**Result: no bleeding, at both tested seeds.** The dress turned a clean,
+saturated blue at both seed 424242 and seed 777777. Critically, this fixture
+has a genuine non-blue control color the H-variant fixture lacked: the pink
+roses in the foreground. If the historical "entire image tinted blue"
+failure mode had reproduced, the roses would show it plainly - they remain
+clearly red/pink at both seeds, unaffected. Face, hair, pose, skin tone,
+sea, mountains, sky, and foliage are all unaffected too. (The blue railing
+was already blue in the source photo, so it is not usable as a bleeding
+indicator here - the roses are.)
+
+This is the strongest evidence yet against Qwen-Image-2.1 inheriting Qwen
+Image Edit 2511's documented case-3 failure mode: same harmful prompt
+wording, same dress/reference color pair as the original lost fixtures, a
+real person+background photo (not a synthetic swatch pair), and a genuine
+non-blue control element in frame - reproduced clean at n=2.
+
 ## Comparison to this project's other masked/reference mechanisms
 
 This is, at n=1, a **stronger result than either Klein or Flux.2 Dev's
@@ -165,14 +198,16 @@ outperforms every masking-based approach this project built on every axis
 measured (locality, causal color-follow, material/texture, speed, VRAM
 margin, graph complexity) - at dramatically lower engineering complexity.
 
-**Partially established**: robustness to the exact historically-harmful
-prompt pattern that broke Qwen Image Edit 2511 (variant H) - no bleeding on
-the current fixture. This is not the same as re-testing the original
-lost case-3 photos themselves (different source/reference content).
+**Established**: robustness to the exact historically-harmful prompt pattern
+that broke Qwen Image Edit 2511, reproduced on a real black-garment/
+blue-reference photo matching the original case-3 fixtures' shape and
+colors, with a genuine non-blue control element (the roses) confirming no
+global tint - clean at n=2 (variant C3). This is not the same as the exact
+original pixels (those are gone), but it is a faithful recreation of the
+scenario Klein was judged "not capable enough" for, not just the prompt
+pattern in isolation.
 
-**Not yet established**: behavior on the original case-3 fixtures/content
-specifically (Klein was judged "not capable enough" for that SPECIFIC
-scenario, now unrecoverable), whether this holds for the eventual official
+**Not yet established**: whether this holds for the eventual official
 (non-community-quant) release, and whether `resolution`/prompt-wording
 choices made here are actually load-bearing or just happened to work on
 the first try.

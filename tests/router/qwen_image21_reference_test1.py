@@ -77,6 +77,16 @@ REF_IMAGE_GREEN = "imgdir_masktest2_ref_green.png"
 # 3000x2000 source photo cannot blow up VRAM the way it did for the
 # hand-built Dev graph.
 REF_IMAGE_LEATHER = "imgdir_masktest2_ref_leather.png"
+# Literal case-3 recreation (added 2026-10-05): the original fixtures
+# (IMG_7148.jpg - black leather dress, person, outdoor scene - and
+# imgdir_test_ref2.png - a solid blue swatch) are gone, but the user
+# supplied a real replacement photo matching the same shape: a person
+# wearing a black latex/leather-look garment outdoors with a rich
+# background (sea, railing, mountains, flowers) - the specific thing
+# needed to actually observe "does editing the dress bleed onto the
+# background", which a garment-only product shot could not test.
+SOURCE_IMAGE_BLACKDRESS = "imgdir_casetest3_source_blackdress_cannes.png"
+REF_IMAGE_BLUE = "imgdir_masktest2_ref_blue.png"
 
 # No color named, deliberately - same wording family as the Klein/Dev tests'
 # proven PROMPT_B, adapted to name the images explicitly (this node has no
@@ -108,10 +118,20 @@ PROMPT_H = (
     "which appears as a solid red background. The rest should remain unchanged."
 )
 
+# Variant C3 (added 2026-10-05): same harmful wording pattern as H, but on
+# the literal case-3 shape instead of the adapted blue/red fixture - a real
+# black-garment source photo + a blue reference swatch, matching the
+# original lost fixtures' colors exactly (IMG_7148.jpg was black leather,
+# imgdir_test_ref2.png was blue).
+PROMPT_C3 = (
+    "The woman is wearing a black dress that needs to be changed to match the color from Reference Image #2, "
+    "which appears as a solid blue background. The rest should remain unchanged."
+)
 
-def build(seed: int, ref_image: str | None, prompt_text: str = PROMPT_B) -> dict:
+
+def build(seed: int, ref_image: str | None, prompt_text: str = PROMPT_B, source_image: str = SOURCE_IMAGE) -> dict:
     graph = {
-        "src": {"class_type": "LoadImage", "inputs": {"image": SOURCE_IMAGE}},
+        "src": {"class_type": "LoadImage", "inputs": {"image": source_image}},
         "unet": {"class_type": "UNETLoader", "inputs": {"unet_name": UNET_NAME, "weight_dtype": "default"}},
         "clip": {"class_type": "CLIPLoader", "inputs": {"clip_name": CLIP_NAME, "type": "qwen_image"}},
         "vae": {"class_type": "VAELoader", "inputs": {"vae_name": VAE_NAME}},
@@ -138,10 +158,10 @@ def build(seed: int, ref_image: str | None, prompt_text: str = PROMPT_B) -> dict
     return {"prompt": graph}
 
 
-def run_variant(name: str, seed: int, ref_image: str | None, sample_vram_flag: bool = False, prompt_text: str = PROMPT_B):
+def run_variant(name: str, seed: int, ref_image: str | None, sample_vram_flag: bool = False, prompt_text: str = PROMPT_B, source_image: str = SOURCE_IMAGE):
     assert_queue_empty()
     free()
-    graph = build(seed, ref_image, prompt_text)
+    graph = build(seed, ref_image, prompt_text, source_image)
     with open(f"tests/router/runs/qwen21_reftest1_variant{name}.graph.json", "w", encoding="utf-8") as f:
         json.dump(graph, f, indent=2, ensure_ascii=False)
 
@@ -186,9 +206,10 @@ def run_variant(name: str, seed: int, ref_image: str | None, sample_vram_flag: b
 
 
 if __name__ == "__main__":
-    variant = sys.argv[1]  # "B", "D", "B2", "M", "H"
+    variant = sys.argv[1]  # "B", "D", "B2", "M", "H", "C3"
     seed = int(sys.argv[2]) if len(sys.argv) > 2 else 424242
-    variants = {"B": REF_IMAGE_RED, "D": None, "B2": REF_IMAGE_GREEN, "M": REF_IMAGE_LEATHER, "H": REF_IMAGE_RED}
-    prompt_text = PROMPT_H if variant == "H" else PROMPT_B
+    variants = {"B": REF_IMAGE_RED, "D": None, "B2": REF_IMAGE_GREEN, "M": REF_IMAGE_LEATHER, "H": REF_IMAGE_RED, "C3": REF_IMAGE_BLUE}
+    prompt_text = PROMPT_H if variant == "H" else PROMPT_C3 if variant == "C3" else PROMPT_B
+    source_image = SOURCE_IMAGE_BLACKDRESS if variant == "C3" else SOURCE_IMAGE
     sample_vram_flag = "--vram" in sys.argv
-    run_variant(variant, seed, variants[variant], sample_vram_flag=sample_vram_flag, prompt_text=prompt_text)
+    run_variant(variant, seed, variants[variant], sample_vram_flag=sample_vram_flag, prompt_text=prompt_text, source_image=source_image)
