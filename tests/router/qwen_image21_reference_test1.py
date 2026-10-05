@@ -206,10 +206,15 @@ def run_variant(name: str, seed: int, ref_image: str | None, sample_vram_flag: b
 
 
 if __name__ == "__main__":
-    variant = sys.argv[1]  # "B", "D", "B2", "M", "H", "C3"
+    variant = sys.argv[1]  # "B", "D", "B2", "M", "H", "C3", "D3"
     seed = int(sys.argv[2]) if len(sys.argv) > 2 else 424242
-    variants = {"B": REF_IMAGE_RED, "D": None, "B2": REF_IMAGE_GREEN, "M": REF_IMAGE_LEATHER, "H": REF_IMAGE_RED, "C3": REF_IMAGE_BLUE}
+    # D3 (added 2026-10-05): D's ablation companion on the C3/black-dress
+    # fixture - needed as the numeric-locality baseline for
+    # qwen21_integration_test2.py's c3fixture case (the router itself
+    # cannot build a no-reference call under edit_mode="native_reference",
+    # its own contract requires exactly 1 reference image by design).
+    variants = {"B": REF_IMAGE_RED, "D": None, "B2": REF_IMAGE_GREEN, "M": REF_IMAGE_LEATHER, "H": REF_IMAGE_RED, "C3": REF_IMAGE_BLUE, "D3": None}
     prompt_text = PROMPT_H if variant == "H" else PROMPT_C3 if variant == "C3" else PROMPT_B
-    source_image = SOURCE_IMAGE_BLACKDRESS if variant == "C3" else SOURCE_IMAGE
+    source_image = SOURCE_IMAGE_BLACKDRESS if variant in ("C3", "D3") else SOURCE_IMAGE
     sample_vram_flag = "--vram" in sys.argv
     run_variant(variant, seed, variants[variant], sample_vram_flag=sample_vram_flag, prompt_text=prompt_text, source_image=source_image)

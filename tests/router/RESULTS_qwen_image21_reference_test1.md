@@ -198,6 +198,21 @@ outperforms every masking-based approach this project built on every axis
 measured (locality, causal color-follow, material/texture, speed, VRAM
 margin, graph complexity) - at dramatically lower engineering complexity.
 
+**Correction (2026-10-05, `RESULTS_router_qwen21_integration2.md`)**:
+"locality" above was a VISUAL impression only at the time this was written
+- no numeric locality check existed yet. One was since run (pixel diff vs.
+a D-ablation baseline, outside a SAM3-segmented dress mask, through the
+router-integrated shape): Qwen-Image-2.1 is measurably WORSE than Dev's
+numeric locality result on this specific axis (roughly 2x Dev's p99 diff,
+4-8x Dev's % px > 10 rate) - concentrated at the dress silhouette boundary
+and fine background detail (not diffuse bleeding), consistent with this
+mechanism sampling from a fully empty latent (independent full
+regeneration) rather than Dev's VAE-anchored latent. The "every axis
+measured" claim no longer holds for locality specifically - see that file
+for the full numeric table and spatial diff heatmaps. Every other claimed
+axis (causal color-follow, material/texture, speed, VRAM margin, graph
+complexity) is unaffected by this correction.
+
 **Established**: robustness to the exact historically-harmful prompt pattern
 that broke Qwen Image Edit 2511, reproduced on a real black-garment/
 blue-reference photo matching the original case-3 fixtures' shape and
