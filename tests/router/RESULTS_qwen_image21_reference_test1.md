@@ -97,6 +97,40 @@ structured sheen). Wall times at this seed: B 25.0s, D 18.1s, B2 24.9s, M
 24.8s - consistent with the first-seed figures, no VRAM/timing sampling run
 at this seed (not yet combined with a third repeat).
 
+## Variant H: the historically-harmful case-3 prompt pattern (seed 424242)
+
+The original case-3 fixtures (`IMG_7148.jpg`, `imgdir_test_ref2.png` - a
+black-leather-dress source + a blue reference swatch, the exact scenario
+the user judged Klein "not capable enough" for) were deleted during the
+project's environment-drift pause and are not recoverable
+(`PROJECT_RULES.md`'s 2026-10-03 migration log). Rather than skip the
+"harder content" question, this reuses the exact historically-harmful
+PROMPT PATTERN instead - confirmed via a dedicated A/B isolation test
+(`RESULTS_ab_background_word.md`) to be the specific cause of Qwen Image
+Edit 2511's global-tint bleeding failure: an origin-color anchor ("needs to
+be changed") plus the word "background" describing the reference swatch
+itself ("which appears as a solid X **background**"):
+
+> "The woman is wearing a blue dress that needs to be changed to match the
+> color from Reference Image #2, which appears as a solid red background.
+> The rest should remain unchanged."
+
+(Adapted to this project's current blue-dress/red-reference fixture - the
+lost originals used black/blue.)
+
+**Result: no bleeding.** Sky, buildings, pavement, street, trash can, bench
+- all pixel-identical to the source, same as every other variant. The
+dress turned red cleanly. The exact wording pattern that caused Qwen Image
+Edit 2511 to tint the ENTIRE image blue (`RESULTS_content_quality.md`'s
+original case-3 finding) had no bleeding effect here.
+
+This is meaningful evidence that Qwen-Image-2.1's architecture does not
+share Qwen Image Edit 2511's specific failure mode - but it is evidence
+about the PROMPT PATTERN on the CURRENT fixture, not a recreation of the
+original case-3 scenario itself (different source/reference images, which
+no longer exist). A literal re-run with an actual black-garment source
+photo would be a stronger test, if such a photo becomes available.
+
 ## Comparison to this project's other masked/reference mechanisms
 
 This is, at n=1, a **stronger result than either Klein or Flux.2 Dev's
@@ -131,12 +165,17 @@ outperforms every masking-based approach this project built on every axis
 measured (locality, causal color-follow, material/texture, speed, VRAM
 margin, graph complexity) - at dramatically lower engineering complexity.
 
-**Not yet established**: behavior on harder content (the original case-3
-motivation this whole investigation traces back to - Klein was judged "not
-capable enough" for a SPECIFIC harder scenario, not this easy fixture),
-whether this holds for the eventual official (non-community-quant) release,
-and whether `resolution`/prompt-wording choices made here are actually
-load-bearing or just happened to work on the first try.
+**Partially established**: robustness to the exact historically-harmful
+prompt pattern that broke Qwen Image Edit 2511 (variant H) - no bleeding on
+the current fixture. This is not the same as re-testing the original
+lost case-3 photos themselves (different source/reference content).
+
+**Not yet established**: behavior on the original case-3 fixtures/content
+specifically (Klein was judged "not capable enough" for that SPECIFIC
+scenario, now unrecoverable), whether this holds for the eventual official
+(non-community-quant) release, and whether `resolution`/prompt-wording
+choices made here are actually load-bearing or just happened to work on
+the first try.
 
 ## Files
 

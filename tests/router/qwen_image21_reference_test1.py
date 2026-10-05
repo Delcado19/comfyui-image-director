@@ -88,8 +88,28 @@ PROMPT_B = (
 # D reuses the identical wording even with no second image, matching the
 # same "dangling reference phrase" ablation design used for Klein's D variant.
 
+# Variant H (added 2026-10-05): the original case-3 fixtures (IMG_7148.jpg,
+# imgdir_test_ref2.png - black leather dress + blue swatch, the scenario
+# Klein was judged "not capable enough" for, see PROJECT_RULES.md) were
+# deleted during the project's environment-drift pause and are not
+# recoverable (PROJECT_RULES.md's 2026-10-03 migration log). This instead
+# reuses the EXACT historically-harmful prompt PATTERN, confirmed via a
+# dedicated A/B isolation test (RESULTS_ab_background_word.md) to cause
+# Qwen Image Edit 2511's global-tint bleeding failure: an origin-color
+# anchor ("needs to be changed") plus the word "background" describing the
+# reference swatch itself ("which appears as a solid X background") -
+# adapted to this project's current blue-dress fixture/red reference
+# instead of the lost black-dress/blue-swatch originals. If Qwen-Image-2.1
+# is robust to the exact wording pattern that broke Qwen 2511, that is
+# meaningful evidence (not proof of general robustness - a different
+# fixture is still untested).
+PROMPT_H = (
+    "The woman is wearing a blue dress that needs to be changed to match the color from Reference Image #2, "
+    "which appears as a solid red background. The rest should remain unchanged."
+)
 
-def build(seed: int, ref_image: str | None) -> dict:
+
+def build(seed: int, ref_image: str | None, prompt_text: str = PROMPT_B) -> dict:
     graph = {
         "src": {"class_type": "LoadImage", "inputs": {"image": SOURCE_IMAGE}},
         "unet": {"class_type": "UNETLoader", "inputs": {"unet_name": UNET_NAME, "weight_dtype": "default"}},
@@ -97,7 +117,7 @@ def build(seed: int, ref_image: str | None) -> dict:
         "vae": {"class_type": "VAELoader", "inputs": {"vae_name": VAE_NAME}},
     }
     encode_inputs = {
-        "clip": ["clip", 0], "vae": ["vae", 0], "prompt": PROMPT_B, "negative_prompt": "",
+        "clip": ["clip", 0], "vae": ["vae", 0], "prompt": prompt_text, "negative_prompt": "",
         "resolution": 1024, "images.image_1": ["src", 0],
     }
     if ref_image is not None:
@@ -118,10 +138,10 @@ def build(seed: int, ref_image: str | None) -> dict:
     return {"prompt": graph}
 
 
-def run_variant(name: str, seed: int, ref_image: str | None, sample_vram_flag: bool = False):
+def run_variant(name: str, seed: int, ref_image: str | None, sample_vram_flag: bool = False, prompt_text: str = PROMPT_B):
     assert_queue_empty()
     free()
-    graph = build(seed, ref_image)
+    graph = build(seed, ref_image, prompt_text)
     with open(f"tests/router/runs/qwen21_reftest1_variant{name}.graph.json", "w", encoding="utf-8") as f:
         json.dump(graph, f, indent=2, ensure_ascii=False)
 
@@ -166,8 +186,9 @@ def run_variant(name: str, seed: int, ref_image: str | None, sample_vram_flag: b
 
 
 if __name__ == "__main__":
-    variant = sys.argv[1]  # "B", "D", "B2", "M"
+    variant = sys.argv[1]  # "B", "D", "B2", "M", "H"
     seed = int(sys.argv[2]) if len(sys.argv) > 2 else 424242
-    variants = {"B": REF_IMAGE_RED, "D": None, "B2": REF_IMAGE_GREEN, "M": REF_IMAGE_LEATHER}
+    variants = {"B": REF_IMAGE_RED, "D": None, "B2": REF_IMAGE_GREEN, "M": REF_IMAGE_LEATHER, "H": REF_IMAGE_RED}
+    prompt_text = PROMPT_H if variant == "H" else PROMPT_B
     sample_vram_flag = "--vram" in sys.argv
-    run_variant(variant, seed, variants[variant], sample_vram_flag=sample_vram_flag)
+    run_variant(variant, seed, variants[variant], sample_vram_flag=sample_vram_flag, prompt_text=prompt_text)
